@@ -1,113 +1,168 @@
 # MinePilot AI
 
-> Open-source framework for recording Minecraft gameplay, training autonomous agents with Behavior Cloning, and running real-time inference through TCP.
+> A custom Minecraft agent framework for recording demonstrations, training Behavior Cloning policies, and running real-time inference between Minecraft on Windows and a headless Linux server.
 
 ---
 
-# Features
+## Current status
 
-- ✅ Fabric gameplay recorder
-- ✅ Episode-based dataset generator
-- ✅ Automatic dataset validation
-- ✅ Behavior Cloning training with PyTorch
-- ✅ ResNet18 vision model
-- ✅ Frame stacking with four consecutive observations
-- ✅ Single-image and stacked-frame inference
-- ✅ Real-time TCP client/server communication
-- ✅ Full keyboard control
-- ✅ Camera control
-- ✅ In-game debug HUD
-- ✅ Legacy file-based live inference fallback
-- ✅ Separate training and validation episodes
+MinePilot currently has two separate learning pipelines:
 
-Planned:
+1. **World policy** — movement, camera control, attack, item use, sprinting, and other actions performed while no Minecraft screen is open.
+2. **GUI policy** — inventory interaction, crafting, slot selection, shift-clicking, right-click item splitting, drag distribution, and closing Minecraft screens.
 
-- Dataset balancing
-- Better visual backbones
-- MineRL integration
-- Reinforcement Learning
-- Temporal models such as LSTM and Transformers
-- Long-term memory
-- Multi-agent support
+The project already supports:
 
----
+- Fabric-based gameplay recording
+- Episode-based datasets
+- 224×224 RGB frame capture
+- World action recording
+- Hotbar-change recording
+- Generic GUI state recording
+- Inventory and crafting-screen detection
+- Semantic slot IDs
+- Item state before and after GUI actions
+- Mouse click, release, keyboard, scroll, and drag recording
+- GUI action normalization
+- PyTorch datasets for world and GUI training
+- ResNet18 Behavior Cloning models
+- Four-frame world observation stacking
+- Offline inference
+- Real-time TCP frame transport
+- Real-time Minecraft keyboard and camera control
+- In-game debug HUD
+- Model checkpoint saving
+- Train/validation splitting by episode when multiple episodes are available
 
-# Architecture
+The GUI training pipeline has passed an end-to-end smoke test:
 
 ```text
-Minecraft on Windows
-        │
-        ▼
-Fabric Recorder
-        │
-        ▼
-Episode Dataset
-        │
-        ▼
-Linux Training Server
-        │
-        ▼
-PyTorch Behavior Cloning
-        │
-        ▼
-TCP Inference Server
-        │
-        ▼
-Minecraft AI Controller
+raw gui_actions.jsonl
+        ↓
+gui_interactions.jsonl
+        ↓
+MinecraftGuiDataset
+        ↓
+ResNet18 GUI policy
+        ↓
+best_model.pt / last_model.pt
 ```
 
-For live frame stacking:
-
-```text
-Minecraft sends one JPEG
-        │
-        ▼
-Python keeps the last four frames
-        │
-        ▼
-[frame t-3, frame t-2, frame t-1, frame t]
-        │
-        ▼
-12-channel ResNet18
-        │
-        ▼
-Keyboard and camera actions
-```
+The current GUI checkpoint was trained only as a technical test on 33 samples. It is not yet suitable for autonomous gameplay.
 
 ---
 
-# Requirements
+## Architecture
 
-## Windows
+### Recording and training
+
+```text
+Minecraft Java on Windows
+        │
+        ▼
+Fabric recorder
+        │
+        ├── frames/
+        ├── actions.jsonl
+        ├── gui_actions.jsonl
+        └── metadata.json
+        │
+        ▼
+Dataset copied to Linux
+        │
+        ├── World dataset pipeline
+        │       └── movement, camera, attack, use, hotbar
+        │
+        └── GUI normalization pipeline
+                └── clicks, slots, drag sequences, crafting
+```
+
+### Planned runtime routing
+
+```text
+Minecraft frame + client state
+        │
+        ▼
+Policy router
+        │
+        ├── client.screen == null
+        │       └── World policy
+        │
+        └── client.screen != null
+                └── GUI policy
+```
+
+Example autonomous crafting flow:
+
+```text
+World policy approaches crafting table
+        │
+        ▼
+World policy predicts USE
+        │
+        ▼
+CraftingScreen opens
+        │
+        ▼
+Router switches to GUI policy
+        │
+        ▼
+GUI policy places ingredients and collects output
+        │
+        ▼
+GUI policy predicts CLOSE
+        │
+        ▼
+Router switches back to world policy
+```
+
+The router and final GUI execution controller are not implemented yet.
+
+---
+
+## Requirements
+
+### Windows
 
 - Minecraft Java Edition 26.1.2
 - Prism Launcher
-- Fabric Loader
-- Fabric API
+- Fabric Loader 0.19.3
+- Fabric API 0.154.0+26.1.2
 - Java 25
-- Gradle wrapper included with the project
+- Gradle wrapper included in the Fabric project
 
-## Linux
+### Linux
 
-- Ubuntu 24.04
-- Python environment managed with Conda
-- PyTorch
-- torchvision
-- Pillow
-- tqdm
-- NumPy
+The Linux machine may be completely headless. No desktop environment, X11, Wayland, or monitor is required.
 
-The current Conda environment is:
+Current environment:
 
 ```bash
 conda activate minerl-bot
 ```
 
+Required Python packages include:
+
+- Python
+- PyTorch
+- torchvision
+- Pillow
+- NumPy
+- tqdm
+
+Current development server:
+
+```text
+Linux:   192.168.0.11
+Windows: 192.168.0.50
+TCP:     5005
+```
+
 ---
 
-# Project Structure
+## Project layout
 
-## Fabric mod
+### Fabric mod
 
 ```text
 mc-ai-recorder/
@@ -132,6 +187,8 @@ mc-ai-recorder/
 │   │           └── recording/
 │   │               ├── EpisodeMetadata.java
 │   │               ├── FrameCapture.java
+│   │               ├── GuiInteractionRecorder.java
+│   │               ├── GuiInteractionSnapshot.java
 │   │               ├── InputSnapshot.java
 │   │               ├── JsonlWriter.java
 │   │               └── RecordingManager.java
@@ -145,35 +202,91 @@ mc-ai-recorder/
 └── gradlew.bat
 ```
 
-## AI training project
+### Current Linux layout
+
+The Python project currently uses a temporary flat layout:
 
 ```text
 /opt/ai/mc-ai-bot/
 ├── checkpoints/
-│   ├── best_model.pt
-│   └── last_model.pt
 ├── checkpoints_stack/
-│   ├── best_model.pt
-│   └── last_model.pt
+├── checkpoints_gui_test/
 ├── tools/
-│   ├── dataset_validator.py
-│   └── inspect_training_dataset.py
 └── training/
     ├── dataset.py
     ├── model.py
     ├── train_bc.py
     ├── inference.py
     ├── inference_server.py
+    ├── live_inference.py
     ├── dataset_stack.py
     ├── model_stack.py
     ├── train_bc_stack.py
     ├── inference_stack.py
-    └── inference_server_stack.py
+    ├── inference_server_stack.py
+    ├── dataset_stack_inventory.py
+    ├── train_bc_stack_inventory.py
+    ├── inference_server_stack_inventory.py
+    ├── normalize_gui_actions.py
+    ├── dataset_gui.py
+    ├── model_gui.py
+    ├── train_gui.py
+    └── world_sample_filter.py
 ```
+
+This layout works, but it should be refactored before adding more models and runtime components.
+
+### Proposed refactor
+
+```text
+/opt/ai/mc-ai-bot/
+├── configs/
+│   ├── world_v2.yaml
+│   └── gui_v1.yaml
+├── src/
+│   └── minepilot/
+│       ├── __init__.py
+│       ├── common/
+│       │   ├── checkpoints.py
+│       │   ├── image_transforms.py
+│       │   └── metrics.py
+│       ├── world/
+│       │   ├── dataset.py
+│       │   ├── model.py
+│       │   ├── train.py
+│       │   ├── inference.py
+│       │   ├── server.py
+│       │   └── filters.py
+│       ├── gui/
+│       │   ├── normalize.py
+│       │   ├── dataset.py
+│       │   ├── model.py
+│       │   ├── train.py
+│       │   ├── inference.py
+│       │   └── server.py
+│       └── runtime/
+│           ├── protocol.py
+│           └── router.py
+├── scripts/
+├── checkpoints/
+│   ├── world/
+│   └── gui/
+├── runs/
+│   ├── world/
+│   └── gui/
+├── tests/
+├── archive/
+│   ├── single_frame_v1/
+│   └── stack_inventory_experiment/
+├── pyproject.toml
+└── README.md
+```
+
+The refactor is planned but has not yet been applied.
 
 ---
 
-# Building the Fabric Mod
+## Building the Fabric mod
 
 From Windows PowerShell:
 
@@ -182,44 +295,32 @@ cd G:\MinePilot\MinePilot\mc_ai_recorder
 .\gradlew.bat clean build
 ```
 
-The compiled mod will be created in:
+The compiled JAR is created in:
 
 ```text
 build\libs\
 ```
 
-Copy the generated JAR without `sources` in its name to the Prism Launcher instance `mods` directory.
-
-Do not mark the entire project directory as a Sources Root in IntelliJ. Gradle automatically manages:
-
-```text
-src/client/java
-```
-
-and:
-
-```text
-src/main/resources
-```
+Copy the JAR without `sources` in its filename into the Prism Launcher instance `mods` directory.
 
 ---
 
-# Minecraft Controls
+## Minecraft controls
 
-| Key | Action                          |
-|-----|---------------------------------|
-| F8  | Start or stop dataset recording |
-| F9  | Legacy live-frame export        |
-| F10 | Enable or disable AI control    |
-| F12 | Enable or disable TCP inference |
-| H   | Enable or disable HUD           |
+| Key | Action |
+|---|---|
+| `F8` | Start or stop dataset recording |
+| `F9` | Legacy live-frame export |
+| `F10` | Enable or disable AI control |
+| `F12` | Enable or disable TCP inference |
+| `H` | Enable or disable the debug HUD |
 
-Recommended live AI startup order:
+Recommended live startup sequence:
 
 ```text
 1. Start the Linux inference server
 2. Press F12
-3. Wait for TCP connection
+3. Wait for the TCP connection
 4. Press F10
 ```
 
@@ -227,56 +328,108 @@ Pressing `F10` again releases AI-controlled keys.
 
 ---
 
-# Recording a Dataset
+## Episode format
 
-Press:
-
-```text
-F8
-```
-
-to start recording.
-
-Press:
+A current episode contains:
 
 ```text
-F8
-```
-
-again to stop recording.
-
-Recordings are saved as separate episodes:
-
-```text
-episode_xxxxx/
+episode_YYYYMMDD_HHMMSS/
 ├── frames/
 ├── actions.jsonl
+├── gui_actions.jsonl
 └── metadata.json
 ```
 
-Each entry contains:
+Use the `episode_*` naming convention. The GUI normalizer searches for this pattern by default.
+
+### `actions.jsonl`
+
+World-state records include:
 
 - frame filename
-- keyboard state
-- camera movement
+- tick and timestamp
+- movement keys
+- jump, sneak, sprint, attack, and use
+- yaw and pitch
+- camera deltas
 - player position
 - health and food
+- selected hotbar slot
 - selected item
+- hotbar-change event
+- inventory toggle
+- `inventoryOpen`
+- `guiOpen`
+- `screenType`
 - dimension and biome
 - movement state
-- timestamp and tick data
 
-The current frame resolution is:
+Important GUI fields:
+
+```json
+{
+  "inventory": false,
+  "inventoryOpen": false,
+  "guiOpen": true,
+  "screenType": "CraftingScreen",
+  "hotbarChanged": false,
+  "hotbarTarget": -1
+}
+```
+
+World training must reject samples where:
+
+```python
+guiOpen is True
+```
+
+### `gui_actions.jsonl`
+
+Raw GUI records include:
+
+- `screenType`
+- event type
+- semantic action type
+- mouse button
+- key code and modifiers
+- mouse coordinates
+- normalized mouse coordinates
+- hovered slot ID
+- slot coordinates
+- item before and after the event
+- carried item before and after the event
+- drag movement
+- `interactionId`
+
+Example click:
+
+```json
+{
+  "eventType": "MOUSE_CLICK",
+  "actionType": "RIGHT_CLICK",
+  "screenType": "InventoryScreen",
+  "slotId": 28,
+  "interactionId": 12
+}
+```
+
+Example drag sequence:
 
 ```text
-224 × 224 RGB
+DRAG_START
+DRAG_SLOT
+DRAG_SLOT
+DRAG_SLOT
+DRAG_END
 ```
+
+All events belonging to one drag use the same `interactionId`.
 
 ---
 
-# Dataset Location
+## Dataset location
 
-Copy recorded episodes to:
+Datasets are stored outside the code repository:
 
 ```text
 /opt/ai/datasets/minecraft_custom
@@ -286,194 +439,68 @@ Example:
 
 ```text
 /opt/ai/datasets/minecraft_custom/
-├── episode_00001/
-├── episode_00002/
-├── episode_00003/
-└── episode_00004/
+├── episode_poruszaniesie_20260706_225231/
+├── episode_scinaniedrewna_20260706_230133/
+├── episode_crafting_20260706_231615/
+└── episode_gui_inventory_20260707_221605/
 ```
 
 ---
 
-# Dataset Validation
+# World policy
 
-Activate the environment:
+## Current baseline
 
-```bash
-conda activate minerl-bot
-```
-
-Run:
-
-```bash
-python /opt/ai/mc-ai-bot/tools/dataset_validator.py \
-  /opt/ai/datasets/minecraft_custom
-```
-
-The validator checks whether:
-
-- episode directories are readable
-- `actions.jsonl` exists
-- referenced frames exist
-- JSON entries can be parsed
-- dataset structure is valid
-
----
-
-# Classic Single-Frame Model
-
-The original model processes one image at a time.
-
-Input:
-
-```text
-[3, 224, 224]
-```
-
-The three input channels are:
-
-```text
-Red
-Green
-Blue
-```
-
-## Training
-
-```bash
-cd /opt/ai/mc-ai-bot/training
-conda activate minerl-bot
-
-python train_bc.py \
-  --dataset /opt/ai/datasets/minecraft_custom \
-  --output /opt/ai/mc-ai-bot/checkpoints \
-  --epochs 5 \
-  --batch-size 32 \
-  --workers 4
-```
-
-Models are saved as:
-
-```text
-/opt/ai/mc-ai-bot/checkpoints/best_model.pt
-/opt/ai/mc-ai-bot/checkpoints/last_model.pt
-```
-
-## Single-image inference
-
-```bash
-python inference.py \
-  --checkpoint /opt/ai/mc-ai-bot/checkpoints/best_model.pt \
-  --image /path/to/frame.png
-```
-
-## Live server
-
-```bash
-python inference_server.py
-```
-
----
-
-# Frame Stacking
-
-The frame-stacking model receives the last four observations instead of only one screenshot.
-
-Example history:
-
-```text
-frame t-3
-frame t-2
-frame t-1
-frame t
-```
-
-Each frame has three RGB channels:
-
-```text
-[3, 224, 224]
-```
-
-Four frames are concatenated across the channel dimension:
-
-```text
-4 × 3 channels = 12 channels
-```
-
-Final model input:
-
-```text
-[12, 224, 224]
-```
-
-This gives the model short-term information about:
-
-- player movement
-- camera rotation
-- approaching obstacles
-- falling
-- jumping
-- moving targets
-- changes between consecutive observations
-
-The current configuration uses:
+The working world baseline uses four stacked RGB frames:
 
 ```text
 stack_size = 4
 frame_stride = 4
 ```
 
-For the action associated with frame `100`, training may use:
+For an action at frame `100`, the model may receive:
 
 ```text
 88, 92, 96, 100
 ```
 
-The previous three frames provide context, while the final frame represents the current state.
-
----
-
-# Testing the Frame-Stack Dataset
-
-```bash
-cd /opt/ai/mc-ai-bot/training
-conda activate minerl-bot
-
-python - <<'PY'
-from dataset_stack import MinecraftFrameStackDataset
-
-dataset = MinecraftFrameStackDataset(
-    "/opt/ai/datasets/minecraft_custom",
-    stack_size=4,
-    frame_stride=4,
-)
-
-images, buttons, camera = dataset[100]
-
-print("Samples:", len(dataset))
-print("Images:", images.shape)
-print("Buttons:", buttons.shape)
-print("Camera:", camera.shape)
-PY
-```
-
-Expected input shape:
+Input shape:
 
 ```text
-torch.Size([12, 224, 224])
+[12, 224, 224]
 ```
 
-Expected action shapes:
+The 12 channels are created from:
 
 ```text
-Buttons: torch.Size([9])
-Camera: torch.Size([2])
+4 frames × 3 RGB channels
 ```
 
----
+Current outputs:
 
-# Training the Frame-Stack Model
+```text
+forward
+back
+left
+right
+jump
+sneak
+sprint
+attack
+use
+yawDelta
+pitchDelta
+```
 
-Frame stacking uses separate files so the working single-frame model remains untouched.
+Button outputs use independent sigmoid probabilities. Camera output is continuous regression.
+
+The current stack checkpoint is stored in:
+
+```text
+/opt/ai/mc-ai-bot/checkpoints_stack/
+```
+
+## Training
 
 ```bash
 cd /opt/ai/mc-ai-bot/training
@@ -489,78 +516,9 @@ python train_bc_stack.py \
   --frame-stride 4
 ```
 
-The lower default batch size is recommended because the model receives four times more image channels.
+## Live inference
 
-Models are saved as:
-
-```text
-/opt/ai/mc-ai-bot/checkpoints_stack/best_model.pt
-/opt/ai/mc-ai-bot/checkpoints_stack/last_model.pt
-```
-
-The stack training script stores additional checkpoint metadata:
-
-```text
-stack_size
-frame_stride
-button_outputs
-action_keys
-camera_weight
-epoch
-validation loss
-```
-
-Training and validation are split by episode when multiple episodes are available. This prevents nearly identical neighboring frames from appearing in both training and validation sets.
-
----
-
-# Frame-Stack Offline Inference
-
-## One image
-
-When only one image is provided, it is repeated four times:
-
-```bash
-python inference_stack.py \
-  --checkpoint /opt/ai/mc-ai-bot/checkpoints_stack/best_model.pt \
-  --images /path/to/frame.png
-```
-
-The model receives:
-
-```text
-[frame, frame, frame, frame]
-```
-
-## Four images
-
-Provide images from oldest to newest:
-
-```bash
-python inference_stack.py \
-  --checkpoint /opt/ai/mc-ai-bot/checkpoints_stack/best_model.pt \
-  --images \
-  frame_0088.png \
-  frame_0092.png \
-  frame_0096.png \
-  frame_0100.png
-```
-
-The script prints:
-
-- input tensor shape
-- frames used
-- probability for every button
-- predicted yaw delta
-- predicted pitch delta
-
----
-
-# Live Frame-Stack TCP Inference
-
-Stop the original inference server before starting the stacked version because both use TCP port `5005`.
-
-Start the server:
+Stop any other service using TCP port `5005`, then run:
 
 ```bash
 cd /opt/ai/mc-ai-bot/training
@@ -569,66 +527,210 @@ conda activate minerl-bot
 python inference_server_stack.py
 ```
 
-Expected startup output:
+Minecraft sends one JPEG at a time. The Python server keeps the recent frame history required by the stack model.
+
+## World model v2
+
+The next world model should add:
+
+### Inventory action
+
+A binary output:
 
 ```text
-Starting frame-stack inference server on 0.0.0.0:5005
-Waiting for Minecraft client...
+inventory_toggle
 ```
 
-Minecraft still sends one JPEG per request.
+### Hotbar action
 
-The Python server maintains a queue containing the last four received frames:
+A categorical output:
 
 ```text
-Request 1: [A, A, A, A]
-Request 2: [A, A, A, B]
-Request 3: [A, A, B, C]
-Request 4: [A, B, C, D]
-Request 5: [B, C, D, E]
+0 = no hotbar change
+1 = slot 1
+2 = slot 2
+...
+9 = slot 9
 ```
 
-No Java TCP protocol changes are required.
+A categorical hotbar head is preferred over nine independent booleans because only one slot can be selected at a time.
 
-In Minecraft:
+The existing `stack_inventory` files are experimental and should not become the final world architecture.
+
+---
+
+# GUI policy
+
+## GUI normalization
+
+Raw `gui_actions.jsonl` must be normalized before training:
+
+```bash
+cd /opt/ai/mc-ai-bot/training
+conda activate minerl-bot
+
+python normalize_gui_actions.py \
+  --dataset /opt/ai/datasets/minecraft_custom
+```
+
+The script creates:
 
 ```text
-F12 — enable TCP inference
-F10 — enable AI control
+episode_*/gui_interactions.jsonl
+```
+
+and a global index:
+
+```text
+/opt/ai/datasets/minecraft_custom/gui_interactions_index.jsonl
+```
+
+Normalization performs the following operations:
+
+- combines a click and its release into one click interaction
+- groups drag events by `interactionId`
+- converts inventory and Escape key presses into `CLOSE`
+- removes technical events that should not become direct policy targets
+- preserves the frame and tick associated with every meaningful action
+
+## Inspecting the GUI dataset
+
+```bash
+python dataset_gui.py \
+  --dataset /opt/ai/datasets/minecraft_custom
+```
+
+Current action classes:
+
+```text
+LEFT_CLICK
+RIGHT_CLICK
+SHIFT_LEFT_CLICK
+SHIFT_RIGHT_CLICK
+LEFT_CLICK_OUTSIDE
+RIGHT_CLICK_OUTSIDE
+SHIFT_LEFT_CLICK_OUTSIDE
+SHIFT_RIGHT_CLICK_OUTSIDE
+DRAG_START_LEFT
+DRAG_START_RIGHT
+DRAG_SLOT_LEFT
+DRAG_SLOT_RIGHT
+DRAG_END_LEFT
+DRAG_END_RIGHT
+CLOSE
+```
+
+Slot encoding:
+
+```text
+0–127 = Minecraft slot ID
+128   = outside all slots
+129   = no slot
+```
+
+## GUI model
+
+The smoke-test GUI model uses a ResNet18 image backbone and four heads:
+
+```text
+action head
+slot head
+screen-type auxiliary head
+pointer head
+```
+
+Current input:
+
+```text
+[3, 224, 224]
+```
+
+Current output targets:
+
+- action class
+- slot class
+- screen type
+- normalized pointer position
+
+The next version should use `screenType` as an explicit model input instead of only predicting it as an auxiliary target.
+
+## GUI smoke test
+
+The first technical test used:
+
+```text
+Samples: 33
+Screen types:
+  CraftingScreen
+  InventoryScreen
+```
+
+Observed classes included:
+
+```text
+LEFT_CLICK
+RIGHT_CLICK
+SHIFT_LEFT_CLICK
+DRAG_START_RIGHT
+DRAG_SLOT_RIGHT
+DRAG_END_RIGHT
+CLOSE
+```
+
+The five-epoch CPU test confirmed that:
+
+- image loading works
+- labels are parsed correctly
+- forward and backward passes work
+- losses decrease
+- checkpoints are saved
+- the entire GUI pipeline works on a headless Linux server
+
+The resulting checkpoint is only a pipeline test:
+
+```text
+/opt/ai/mc-ai-bot/checkpoints_gui_test/
+```
+
+It should not be used as a production policy.
+
+## GUI smoke-test training command
+
+```bash
+python train_gui.py \
+  --dataset /opt/ai/datasets/minecraft_custom \
+  --output /opt/ai/mc-ai-bot/checkpoints_gui_test \
+  --epochs 5 \
+  --batch-size 8 \
+  --num-workers 2
 ```
 
 ---
 
-# TCP Protocol
+# TCP protocol
 
-Default server:
-
-```text
-Linux host: 192.168.0.11
-TCP port: 5005
-```
-
-Current Windows client:
+Default endpoint:
 
 ```text
-192.168.0.50
+host: 192.168.0.11
+port: 5005
 ```
 
-Request format:
+Request:
 
 ```text
-4-byte big-endian image length
-JPEG image bytes
+4-byte big-endian JPEG length
+JPEG bytes
 ```
 
-Response format:
+Response:
 
 ```text
 4-byte big-endian JSON length
-JSON response bytes
+JSON bytes
 ```
 
-Example response:
+Current world response example:
 
 ```json
 {
@@ -643,10 +745,6 @@ Example response:
     "attack": false,
     "use": false
   },
-  "probs": {
-    "forward": 0.9731,
-    "back": 0.0032
-  },
   "camera": {
     "yawDelta": -0.42,
     "pitchDelta": 0.08
@@ -654,221 +752,303 @@ Example response:
 }
 ```
 
+The protocol must be extended later for:
+
+- inventory toggle
+- hotbar target
+- GUI action
+- GUI slot target
+- GUI drag state
+- policy-router state
+
 ---
 
 # Debug HUD
 
-The Fabric mod displays an in-game debug HUD.
-
-The HUD shows:
+The Fabric mod currently displays:
 
 ```text
 TCP state
-AI control state
-Connection state
-Round-trip latency
+AI-control state
+connection state
+round-trip latency
 JPEG size
-Current movement actions
-Jump, sneak and sprint state
-Attack and use state
-Yaw delta
-Pitch delta
+movement actions
+jump, sneak, and sprint
+attack and use
+yaw delta
+pitch delta
 ```
 
-Example:
+Future HUD fields should include:
 
 ```text
-OpenCraft AI
-TCP: ON
-Control: ON
-Connected: true
-RTT: 31 ms
-JPEG: 8421 bytes
-F:true B:false L:false R:false
-J:false Sneak:false Sprint:true
-Attack:false Use:false
-Yaw: -0.42 Pitch: 0.08
+active policy: WORLD / GUI
+screenType
+predicted GUI action
+predicted slot
+hotbar target
+GUI confidence
 ```
 
 ---
 
-# Current Model
+# Data collection guidelines
 
-Backbone:
+## World demonstrations
 
-```text
-ResNet18
-```
+Record varied examples of:
 
-Single-frame input:
-
-```text
-[3, 224, 224]
-```
-
-Frame-stack input:
-
-```text
-[12, 224, 224]
-```
-
-Outputs:
-
-```text
-Forward
-Back
-Left
-Right
-Jump
-Sneak
-Sprint
-Attack
-Use
-
-Yaw Delta
-Pitch Delta
-```
-
-Button predictions use independent sigmoid probabilities.
-
-Default action threshold:
-
-```text
-0.5
-```
-
-Camera movement is predicted using two continuous values:
-
-```text
-yawDelta
-pitchDelta
-```
-
----
-
-# Training Tips
-
-Record demonstrations containing:
-
-- normal walking
+- walking
 - sprinting
 - strafing
-- moving backwards
-- jumping over obstacles
-- looking around smoothly
-- approaching trees and blocks
+- moving backward
+- smooth camera movement
+- jumping
 - mining
-- using items
-- combat
-- exploring terrain
+- using blocks and items
+- switching hotbar slots
+- approaching targets
+- correcting movement after collisions
 - swimming
-- recovering after hitting obstacles
+- exploration
+- combat
 
 Avoid excessive:
 
 - AFK time
-- standing still
+- repeated identical motion
 - random camera spinning
-- menu usage unrelated to the task
-- repeated identical behavior
-- recordings with very low FPS
+- extremely long single episodes
+- low-FPS recording
+- GUI screens inside world-policy training data
 
-The model only learns actions that exist in the dataset. Frame stacking gives temporal context, but it does not solve missing or heavily underrepresented actions.
+## GUI demonstrations
 
-For example, when very few samples contain:
+Use many short episodes rather than one very long episode.
+
+Record:
+
+- left-click item movement
+- right-click stack splitting
+- shift-left-click
+- shift-right-click
+- closing with `E`
+- closing with `Escape`
+- left drag
+- right drag
+- inventory 2×2 crafting
+- crafting-table 3×3 crafting
+- collecting crafting output
+- shift-clicking crafting output
+- moving items between hotbar and inventory
+- interacting with different slots
+- different item counts
+- different inventory layouts
+
+Recommended first useful GUI dataset:
 
 ```text
-jump = true
+10–20 separate episodes
+2,000–5,000 atomic GUI samples
+at least 50–100 examples of every important action
+multiple recipes and item layouts
 ```
 
-the model may still rarely jump.
+Training and validation should be split by episode.
 
 ---
 
-# Switching Between Models
+# Immediate next steps
 
-## Original single-frame model
+## 1. Refactor the Python repository
 
-```bash
-python inference_server.py
-```
+Move the flat scripts into the planned `src/minepilot/` package.
 
-Checkpoint:
+Archive, but do not delete:
 
 ```text
-/opt/ai/mc-ai-bot/checkpoints/best_model.pt
+single-frame v1 files
+stack-inventory experimental files
+legacy inference files
 ```
 
-## Frame-stack model
+Also remove Java source files and generated logs from the Python `training/` directory.
 
-```bash
-python inference_server_stack.py
-```
+## 2. Build GUI model v2
 
-Checkpoint:
+Required changes:
+
+- use `screenType` as an input embedding
+- keep screen prediction only as an optional auxiliary task
+- add slot masks based on the current screen
+- ignore invalid slot classes during inference
+- improve class-weight reporting
+- add per-class precision, recall, and confusion matrices
+- split train and validation strictly by episode
+
+## 3. Build world model v2
+
+Required outputs:
+
+- existing world buttons
+- camera regression
+- inventory toggle
+- categorical hotbar head
+
+Reuse the current stack model backbone where possible.
+
+## 4. Improve dataset tooling
+
+Add:
+
+- world/GUI episode summaries
+- action-frequency reports
+- duplicate-frame detection
+- missing-class warnings
+- split validation
+- dataset version metadata
+- schema version in every episode
+
+## 5. Record a balanced GUI dataset
+
+Before serious GUI training, collect enough examples for:
 
 ```text
-/opt/ai/mc-ai-bot/checkpoints_stack/best_model.pt
+LEFT_CLICK
+RIGHT_CLICK
+SHIFT_LEFT_CLICK
+SHIFT_RIGHT_CLICK
+LEFT_DRAG
+RIGHT_DRAG
+CLOSE
 ```
 
-Only one server can use port `5005` at a time.
+Record multiple inventory and crafting-table episodes with different items and layouts.
+
+## 6. Train and evaluate both policies
+
+World evaluation:
+
+- per-button precision and recall
+- camera MAE
+- hotbar accuracy
+- inventory-toggle precision and recall
+
+GUI evaluation:
+
+- action accuracy
+- slot accuracy
+- joint action-and-slot accuracy
+- per-screen metrics
+- drag-sequence success
+- invalid-slot rate
+
+## 7. Implement GUI inference
+
+Add:
+
+- `gui/inference.py`
+- `gui/server.py`
+- Java GUI executor
+- slot-center lookup
+- mouse-button press/release control
+- drag-state execution
+- close-screen execution
+
+## 8. Implement the policy router
+
+The runtime router should select:
+
+```text
+WORLD when no screen is open
+GUI when a supported screen is open
+SAFE_IDLE for unknown or unsupported screens
+```
+
+Unknown screens should not be clicked automatically.
+
+## 9. Add higher-level task logic
+
+After stable imitation learning:
+
+- task state machine
+- inventory awareness
+- recipe and crafting planner
+- navigation goals
+- recovery from failed actions
+- short-term memory
+- recurrent or Transformer policy
+- Behavior Cloning fine-tuning with reinforcement learning
 
 ---
 
 # Roadmap
 
-## Phase 1 — Data collection
+## Phase 1 — Recording
 
 - [x] Fabric recorder
 - [x] Frame capture
-- [x] Action recording
+- [x] World action capture
 - [x] Episode metadata
-- [x] Dataset validation
+- [x] Hotbar-change capture
+- [x] Generic GUI state capture
+- [x] Slot-aware click capture
+- [x] Drag capture
+- [x] Separate `gui_actions.jsonl`
 
-## Phase 2 — Behavior Cloning
+## Phase 2 — World Behavior Cloning
 
-- [x] PyTorch dataset
+- [x] Single-frame baseline
 - [x] ResNet18 model
+- [x] Frame stacking
 - [x] Keyboard prediction
 - [x] Camera prediction
-- [x] Checkpoint saving
 - [x] Offline inference
+- [x] TCP live inference
+- [ ] World model v2
+- [ ] Inventory-toggle head
+- [ ] Categorical hotbar head
+- [ ] GUI-frame filtering in final dataset loader
+- [ ] Per-action evaluation
 
-## Phase 3 — Real-time agent
+## Phase 3 — GUI Behavior Cloning
 
-- [x] TCP client
-- [x] TCP server
-- [x] Real-time keyboard control
-- [x] Real-time camera control
+- [x] GUI action normalizer
+- [x] GUI PyTorch dataset
+- [x] Slot classification
+- [x] Drag-sequence representation
+- [x] GUI model smoke test
+- [x] Headless CPU training
+- [ ] Screen-type input embedding
+- [ ] Slot masking
+- [ ] Balanced demonstration dataset
+- [ ] Episode-level validation
+- [ ] GUI offline inference
+- [ ] GUI live inference
+- [ ] Java GUI action executor
+
+## Phase 4 — Runtime integration
+
+- [x] TCP image transport
+- [x] World keyboard and camera controller
 - [x] Debug HUD
-- [x] Frame stacking
+- [ ] Extended response protocol
+- [ ] World/GUI policy router
+- [ ] GUI action execution
+- [ ] Safe handling of unsupported screens
+- [ ] Runtime confidence thresholds
 
-## Phase 4 — Model improvements
+## Phase 5 — Autonomy
 
-- [ ] Dataset balancing
-- [ ] Per-action loss weights
-- [ ] Data augmentation
-- [ ] Better train/validation metrics
-- [ ] Confusion statistics for each action
-- [ ] Better backbone
-- [ ] Temporal LSTM or Transformer
-- [ ] Larger demonstration dataset
-
-## Phase 5 — Reinforcement Learning
-
-- [ ] MineRL integration
-- [ ] Reward system
-- [ ] Behavior Cloning initialization
-- [ ] RL fine-tuning
-- [ ] Curriculum learning
-
-## Phase 6 — Autonomous Minecraft Agent
-
-- [ ] Long-term memory
-- [ ] Goal planning
-- [ ] Inventory awareness
+- [ ] Inventory-state model
+- [ ] Recipe planner
 - [ ] Crafting planner
 - [ ] Navigation and mapping
+- [ ] Goal planning
+- [ ] Failure recovery
+- [ ] Temporal memory
+- [ ] Reinforcement Learning fine-tuning
 - [ ] Multi-agent support
 
 ---
@@ -881,6 +1061,5 @@ MIT
 
 # Author
 
-Juliusz Wójcik
-
+Juliusz Wójcik  
 Pixeloza
