@@ -6,9 +6,9 @@
 
 ## Current status
 
-MinePilot currently has two separate learning pipelines:
+MinePilot currently uses two separate learning pipelines:
 
-1. **World policy** — movement, camera control, attack, item use, sprinting, and other actions performed while no Minecraft screen is open.
+1. **World policy** — movement, camera control, attack, item use, sprinting, hotbar selection, and other actions performed while no Minecraft screen is open.
 2. **GUI policy** — inventory interaction, crafting, slot selection, shift-clicking, right-click item splitting, drag distribution, and closing Minecraft screens.
 
 The project already supports:
@@ -18,7 +18,7 @@ The project already supports:
 - 224×224 RGB frame capture
 - World action recording
 - Hotbar-change recording
-- Generic GUI state recording
+- Generic GUI-state recording
 - Inventory and crafting-screen detection
 - Semantic slot IDs
 - Item state before and after GUI actions
@@ -27,12 +27,17 @@ The project already supports:
 - PyTorch datasets for world and GUI training
 - ResNet18 Behavior Cloning models
 - Four-frame world observation stacking
-- Offline inference
+- Offline world inference
 - Real-time TCP frame transport
 - Real-time Minecraft keyboard and camera control
 - In-game debug HUD
 - Model checkpoint saving
-- Train/validation splitting by episode when multiple episodes are available
+- Episode-based train/validation splitting when multiple episodes are available
+- Headless Linux training through terminal or SSH
+- Refactored Python package under `src/minepilot`
+- Shell launchers under `scripts/`
+- Archived legacy and experimental code
+- Git-ready repository layout with large model files excluded
 
 The GUI training pipeline has passed an end-to-end smoke test:
 
@@ -48,7 +53,7 @@ ResNet18 GUI policy
 best_model.pt / last_model.pt
 ```
 
-The current GUI checkpoint was trained only as a technical test on 33 samples. It is not yet suitable for autonomous gameplay.
+The current GUI checkpoint was trained only as a technical test on 33 samples. It is not suitable for autonomous gameplay yet.
 
 ---
 
@@ -88,8 +93,11 @@ Policy router
         ├── client.screen == null
         │       └── World policy
         │
-        └── client.screen != null
-                └── GUI policy
+        ├── supported screen is open
+        │       └── GUI policy
+        │
+        └── unsupported screen is open
+                └── SAFE_IDLE
 ```
 
 Example autonomous crafting flow:
@@ -116,7 +124,7 @@ GUI policy predicts CLOSE
 Router switches back to world policy
 ```
 
-The router and final GUI execution controller are not implemented yet.
+The final policy router and Java GUI action executor are not implemented yet.
 
 ---
 
@@ -150,7 +158,7 @@ Required Python packages include:
 - NumPy
 - tqdm
 
-Current development server:
+Current development endpoints:
 
 ```text
 Linux:   192.168.0.11
@@ -160,7 +168,7 @@ TCP:     5005
 
 ---
 
-## Project layout
+## Project structure
 
 ### Fabric mod
 
@@ -202,87 +210,96 @@ mc-ai-recorder/
 └── gradlew.bat
 ```
 
-### Current Linux layout
+### Linux backend
 
-The Python project currently uses a temporary flat layout:
+The backend refactor has been completed.
 
 ```text
 /opt/ai/mc-ai-bot/
+├── archive/
+│   ├── misplaced_java/
+│   ├── single_frame_v1/
+│   └── stack_inventory_experiment/
 ├── checkpoints/
-├── checkpoints_stack/
-├── checkpoints_gui_test/
-├── tools/
-└── training/
-    ├── dataset.py
-    ├── model.py
-    ├── train_bc.py
-    ├── inference.py
-    ├── inference_server.py
-    ├── live_inference.py
-    ├── dataset_stack.py
-    ├── model_stack.py
-    ├── train_bc_stack.py
-    ├── inference_stack.py
-    ├── inference_server_stack.py
-    ├── dataset_stack_inventory.py
-    ├── train_bc_stack_inventory.py
-    ├── inference_server_stack_inventory.py
-    ├── normalize_gui_actions.py
-    ├── dataset_gui.py
-    ├── model_gui.py
-    ├── train_gui.py
-    └── world_sample_filter.py
-```
-
-This layout works, but it should be refactored before adding more models and runtime components.
-
-### Proposed refactor
-
-```text
-/opt/ai/mc-ai-bot/
+│   ├── gui/
+│   │   ├── migration_test/
+│   │   └── smoke_test/
+│   └── world/
+│       ├── single_frame_v1/
+│       └── stack_v1/
 ├── configs/
-│   ├── world_v2.yaml
-│   └── gui_v1.yaml
+│   └── README.md
+├── runs/
+│   └── legacy/
+├── scripts/
+│   ├── inspect_gui_dataset.sh
+│   ├── normalize_gui.sh
+│   ├── serve_world.sh
+│   ├── train_gui.sh
+│   └── train_world.sh
 ├── src/
 │   └── minepilot/
 │       ├── __init__.py
 │       ├── common/
-│       │   ├── checkpoints.py
-│       │   ├── image_transforms.py
-│       │   └── metrics.py
-│       ├── world/
-│       │   ├── dataset.py
-│       │   ├── model.py
-│       │   ├── train.py
-│       │   ├── inference.py
-│       │   ├── server.py
-│       │   └── filters.py
+│       │   └── __init__.py
 │       ├── gui/
-│       │   ├── normalize.py
+│       │   ├── __init__.py
 │       │   ├── dataset.py
 │       │   ├── model.py
-│       │   ├── train.py
-│       │   ├── inference.py
-│       │   └── server.py
-│       └── runtime/
-│           ├── protocol.py
-│           └── router.py
-├── scripts/
-├── checkpoints/
-│   ├── world/
-│   └── gui/
-├── runs/
-│   ├── world/
-│   └── gui/
+│       │   ├── normalize.py
+│       │   └── train.py
+│       ├── runtime/
+│       │   └── __init__.py
+│       └── world/
+│           ├── __init__.py
+│           ├── dataset.py
+│           ├── filters.py
+│           ├── inference.py
+│           ├── model.py
+│           ├── server.py
+│           └── train.py
 ├── tests/
-├── archive/
-│   ├── single_frame_v1/
-│   └── stack_inventory_experiment/
+│   └── __init__.py
+├── .gitignore
 ├── pyproject.toml
 └── README.md
 ```
 
-The refactor is planned but has not yet been applied.
+Legacy code has been archived rather than deleted.
+
+The refactor created compatibility links for older checkpoint paths where possible.
+
+---
+
+## Backend migration and backup
+
+Before the Linux backend was restructured, a full project backup was created under:
+
+```text
+/opt/MinePilot-backedn-backup/mc-ai-bot_YYYYMMDD_HHMMSS
+```
+
+The completed migration also generated a local report:
+
+```text
+/opt/ai/mc-ai-bot/MIGRATION_REPORT.md
+```
+
+`MIGRATION_REPORT.md` is local-only and excluded from Git.
+
+The backup contains the complete project state from before the migration and can be used for manual rollback.
+
+Example rollback procedure:
+
+```bash
+sudo rm -rf /opt/ai/mc-ai-bot
+sudo cp -a \
+  /opt/MinePilot-backedn-backup/mc-ai-bot_YYYYMMDD_HHMMSS \
+  /opt/ai/mc-ai-bot
+sudo chown -R codex:codex /opt/ai/mc-ai-bot
+```
+
+Stop all training and inference processes before rollback.
 
 ---
 
@@ -442,8 +459,10 @@ Example:
 ├── episode_poruszaniesie_20260706_225231/
 ├── episode_scinaniedrewna_20260706_230133/
 ├── episode_crafting_20260706_231615/
-└── episode_gui_inventory_20260707_221605/
+└── episode_20260707_221605/
 ```
+
+Datasets are intentionally not committed to Git.
 
 ---
 
@@ -494,21 +513,41 @@ pitchDelta
 
 Button outputs use independent sigmoid probabilities. Camera output is continuous regression.
 
-The current stack checkpoint is stored in:
+Current world code:
 
 ```text
-/opt/ai/mc-ai-bot/checkpoints_stack/
+src/minepilot/world/
+├── dataset.py
+├── filters.py
+├── inference.py
+├── model.py
+├── server.py
+└── train.py
+```
+
+Current world checkpoint:
+
+```text
+checkpoints/world/stack_v1/
+```
+
+Compatibility path:
+
+```text
+checkpoints_stack
 ```
 
 ## Training
 
+Run from the project root:
+
 ```bash
-cd /opt/ai/mc-ai-bot/training
+cd /opt/ai/mc-ai-bot
 conda activate minerl-bot
 
-python train_bc_stack.py \
+./scripts/train_world.sh \
   --dataset /opt/ai/datasets/minecraft_custom \
-  --output /opt/ai/mc-ai-bot/checkpoints_stack \
+  --output /opt/ai/mc-ai-bot/checkpoints/world/stack_v1 \
   --epochs 5 \
   --batch-size 16 \
   --workers 4 \
@@ -521,10 +560,10 @@ python train_bc_stack.py \
 Stop any other service using TCP port `5005`, then run:
 
 ```bash
-cd /opt/ai/mc-ai-bot/training
+cd /opt/ai/mc-ai-bot
 conda activate minerl-bot
 
-python inference_server_stack.py
+./scripts/serve_world.sh
 ```
 
 Minecraft sends one JPEG at a time. The Python server keeps the recent frame history required by the stack model.
@@ -555,7 +594,7 @@ A categorical output:
 
 A categorical hotbar head is preferred over nine independent booleans because only one slot can be selected at a time.
 
-The existing `stack_inventory` files are experimental and should not become the final world architecture.
+The archived stack-inventory implementation is experimental and should not become the final world architecture.
 
 ---
 
@@ -566,11 +605,10 @@ The existing `stack_inventory` files are experimental and should not become the 
 Raw `gui_actions.jsonl` must be normalized before training:
 
 ```bash
-cd /opt/ai/mc-ai-bot/training
+cd /opt/ai/mc-ai-bot
 conda activate minerl-bot
 
-python normalize_gui_actions.py \
-  --dataset /opt/ai/datasets/minecraft_custom
+./scripts/normalize_gui.sh
 ```
 
 The script creates:
@@ -585,9 +623,9 @@ and a global index:
 /opt/ai/datasets/minecraft_custom/gui_interactions_index.jsonl
 ```
 
-Normalization performs the following operations:
+Normalization:
 
-- combines a click and its release into one click interaction
+- combines a click and release into one click interaction
 - groups drag events by `interactionId`
 - converts inventory and Escape key presses into `CLOSE`
 - removes technical events that should not become direct policy targets
@@ -596,8 +634,7 @@ Normalization performs the following operations:
 ## Inspecting the GUI dataset
 
 ```bash
-python dataset_gui.py \
-  --dataset /opt/ai/datasets/minecraft_custom
+./scripts/inspect_gui_dataset.sh
 ```
 
 Current action classes:
@@ -656,7 +693,7 @@ The next version should use `screenType` as an explicit model input instead of o
 
 ## GUI smoke test
 
-The first technical test used:
+The current technical dataset contains:
 
 ```text
 Samples: 33
@@ -665,7 +702,7 @@ Screen types:
   InventoryScreen
 ```
 
-Observed classes included:
+Observed classes include:
 
 ```text
 LEFT_CLICK
@@ -677,30 +714,32 @@ DRAG_END_RIGHT
 CLOSE
 ```
 
-The five-epoch CPU test confirmed that:
+The CPU smoke test confirmed that:
 
 - image loading works
 - labels are parsed correctly
 - forward and backward passes work
 - losses decrease
 - checkpoints are saved
-- the entire GUI pipeline works on a headless Linux server
+- the full GUI pipeline works on a headless Linux server
+- the refactored package and launcher scripts work after migration
 
-The resulting checkpoint is only a pipeline test:
+The smoke-test checkpoints are stored under:
 
 ```text
-/opt/ai/mc-ai-bot/checkpoints_gui_test/
+checkpoints/gui/smoke_test/
+checkpoints/gui/migration_test/
 ```
 
-It should not be used as a production policy.
+They should not be used as production policies.
 
-## GUI smoke-test training command
+## GUI smoke-test training
 
 ```bash
-python train_gui.py \
+./scripts/train_gui.sh \
   --dataset /opt/ai/datasets/minecraft_custom \
-  --output /opt/ai/mc-ai-bot/checkpoints_gui_test \
-  --epochs 5 \
+  --output /opt/ai/mc-ai-bot/checkpoints/gui/migration_test \
+  --epochs 1 \
   --batch-size 8 \
   --num-workers 2
 ```
@@ -793,6 +832,293 @@ GUI confidence
 
 ---
 
+# Git workflow for the backend
+
+## Repository
+
+Recommended GitHub repository name:
+
+```text
+MinePilot-Backend
+```
+
+The repository should be private.
+
+The local repository root is:
+
+```text
+/opt/ai/mc-ai-bot
+```
+
+Use Git as the `codex` user rather than `root`.
+
+## Files intentionally excluded from Git
+
+The current `.gitignore` excludes:
+
+```text
+minerl/
+checkpoints/
+checkpoints_stack
+checkpoints_gui_test
+runs/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+.env
+.env.*
+*.pem
+*.key
+__pycache__/
+build/
+dist/
+MIGRATION_REPORT.md
+```
+
+This prevents GitHub from receiving:
+
+- model checkpoints
+- large third-party MineRL sources and build artifacts
+- runtime logs
+- local migration details
+- Python caches
+- local secrets
+- environment files
+
+Datasets stored in `/opt/ai/datasets/` are outside the repository and are not committed.
+
+## First-time GitHub login on a headless server
+
+```bash
+su - codex
+cd /opt/ai/mc-ai-bot
+
+gh auth login \
+  --hostname github.com \
+  --git-protocol https \
+  --web
+```
+
+GitHub CLI prints a temporary code. Open the displayed URL on another computer, log in to GitHub, and enter the code.
+
+Then configure Git authentication:
+
+```bash
+gh auth setup-git
+gh auth status
+```
+
+## Configure commit identity
+
+```bash
+git config --global user.name "Juliusz Wójcik"
+git config --global user.email "YOUR_GITHUB_EMAIL"
+```
+
+Verify:
+
+```bash
+git config --global user.name
+git config --global user.email
+```
+
+## Initialize the local repository
+
+```bash
+cd /opt/ai/mc-ai-bot
+
+git init -b main
+git add .
+```
+
+Inspect the staged files:
+
+```bash
+git status --short
+git diff --cached --stat
+```
+
+Verify that large and private paths are not tracked:
+
+```bash
+git ls-files |
+grep -E '(^minerl/|^checkpoints/|^runs/|\.pt$|\.pth$|\.jar$)' \
+&& echo "ERROR: unwanted files are tracked" \
+|| echo "OK: repository is clean"
+```
+
+Create the initial commit:
+
+```bash
+git commit -m "Initial MinePilot backend import"
+```
+
+## Create the private GitHub repository
+
+```bash
+gh repo create MinePilot-Backend \
+  --private \
+  --source=. \
+  --remote=origin \
+  --description "MinePilot training, inference and autonomous Minecraft agent backend" \
+  --push
+```
+
+Do not use `--add-readme`, because this repository already contains `README.md`.
+
+Verify:
+
+```bash
+git remote -v
+
+gh repo view \
+  --json nameWithOwner,visibility,url
+```
+
+Expected visibility:
+
+```text
+PRIVATE
+```
+
+## Daily Git workflow
+
+Before starting work:
+
+```bash
+cd /opt/ai/mc-ai-bot
+git status
+git pull --ff-only
+```
+
+After making changes:
+
+```bash
+git status
+git diff
+git add src scripts configs tests README.md pyproject.toml
+git diff --cached
+git commit -m "Describe the completed change"
+git push
+```
+
+Avoid blindly using `git add .` after generating checkpoints or external files. The `.gitignore` protects known paths, but explicitly staging the intended project directories is easier to review.
+
+## Feature branches
+
+For larger work, use a separate branch:
+
+```bash
+git switch -c feature/gui-model-v2
+```
+
+Commit normally:
+
+```bash
+git add src/minepilot/gui tests README.md
+git commit -m "Add screen-aware GUI policy"
+git push -u origin feature/gui-model-v2
+```
+
+After review and merge:
+
+```bash
+git switch main
+git pull --ff-only
+git branch -d feature/gui-model-v2
+```
+
+Suggested branch names:
+
+```text
+feature/gui-model-v2
+feature/world-model-v2
+feature/policy-router
+fix/gui-drag-normalization
+docs/update-readme
+```
+
+## Reviewing changes before pushing
+
+```bash
+git status
+git diff
+git diff --cached
+git log --oneline -5
+```
+
+Check what will be pushed:
+
+```bash
+git log --oneline origin/main..HEAD
+```
+
+## Restoring a modified tracked file
+
+Discard uncommitted changes to one file:
+
+```bash
+git restore path/to/file.py
+```
+
+Unstage a file while preserving its modifications:
+
+```bash
+git restore --staged path/to/file.py
+```
+
+## Do not commit secrets
+
+Before pushing, check the tracked source tree:
+
+```bash
+grep -RInE \
+  --exclude-dir=.git \
+  --exclude-dir=minerl \
+  --exclude-dir=checkpoints \
+  --exclude-dir=runs \
+  '(api[_-]?key|password|secret|private[_-]?key|access[_-]?token)' \
+  src scripts configs . || true
+```
+
+Some source-code matches may be false positives. Review every unexpected result.
+
+Never commit:
+
+```text
+GitHub tokens
+API keys
+private SSH keys
+passwords
+.env files
+model checkpoints containing sensitive data
+```
+
+If a secret is committed, deleting it in a later commit is not sufficient. Rotate the secret and clean it from Git history.
+
+## Checkpoint and dataset storage
+
+Model checkpoints and datasets are intentionally not stored in the normal Git repository.
+
+Current locations:
+
+```text
+/opt/ai/mc-ai-bot/checkpoints/
+/opt/ai/datasets/minecraft_custom/
+```
+
+For sharing trained models later, use one of:
+
+- GitHub Releases
+- Git LFS
+- object storage
+- an internal artifact server
+
+Do not remove the checkpoint rules from `.gitignore` without deliberately selecting a large-file storage strategy.
+
+---
+
 # Data collection guidelines
 
 ## World demonstrations
@@ -861,19 +1187,12 @@ Training and validation should be split by episode.
 
 # Immediate next steps
 
-## 1. Refactor the Python repository
+## 1. Create and push the private backend repository
 
-Move the flat scripts into the planned `src/minepilot/` package.
-
-Archive, but do not delete:
-
-```text
-single-frame v1 files
-stack-inventory experimental files
-legacy inference files
-```
-
-Also remove Java source files and generated logs from the Python `training/` directory.
+- initialize Git in `/opt/ai/mc-ai-bot`
+- create `MinePilot-Backend`
+- verify that its visibility is `PRIVATE`
+- push the initial backend commit
 
 ## 2. Build GUI model v2
 
@@ -902,7 +1221,7 @@ Reuse the current stack model backbone where possible.
 
 Add:
 
-- world/GUI episode summaries
+- world and GUI episode summaries
 - action-frequency reports
 - duplicate-frame detection
 - missing-class warnings
@@ -948,8 +1267,8 @@ GUI evaluation:
 
 Add:
 
-- `gui/inference.py`
-- `gui/server.py`
+- `src/minepilot/gui/inference.py`
+- `src/minepilot/gui/server.py`
 - Java GUI executor
 - slot-center lookup
 - mouse-button press/release control
@@ -957,6 +1276,11 @@ Add:
 - close-screen execution
 
 ## 8. Implement the policy router
+
+Add:
+
+- `src/minepilot/runtime/protocol.py`
+- `src/minepilot/runtime/router.py`
 
 The runtime router should select:
 
@@ -997,7 +1321,19 @@ After stable imitation learning:
 - [x] Drag capture
 - [x] Separate `gui_actions.jsonl`
 
-## Phase 2 — World Behavior Cloning
+## Phase 2 — Backend structure
+
+- [x] Full pre-migration backup
+- [x] Python package under `src/minepilot`
+- [x] World and GUI code separation
+- [x] Legacy code archiving
+- [x] Checkpoint directory reorganization
+- [x] Shell launchers
+- [x] `pyproject.toml`
+- [x] Git-ready `.gitignore`
+- [ ] Private GitHub repository created and pushed
+
+## Phase 3 — World Behavior Cloning
 
 - [x] Single-frame baseline
 - [x] ResNet18 model
@@ -1012,7 +1348,7 @@ After stable imitation learning:
 - [ ] GUI-frame filtering in final dataset loader
 - [ ] Per-action evaluation
 
-## Phase 3 — GUI Behavior Cloning
+## Phase 4 — GUI Behavior Cloning
 
 - [x] GUI action normalizer
 - [x] GUI PyTorch dataset
@@ -1020,6 +1356,7 @@ After stable imitation learning:
 - [x] Drag-sequence representation
 - [x] GUI model smoke test
 - [x] Headless CPU training
+- [x] Post-migration training validation
 - [ ] Screen-type input embedding
 - [ ] Slot masking
 - [ ] Balanced demonstration dataset
@@ -1028,7 +1365,7 @@ After stable imitation learning:
 - [ ] GUI live inference
 - [ ] Java GUI action executor
 
-## Phase 4 — Runtime integration
+## Phase 5 — Runtime integration
 
 - [x] TCP image transport
 - [x] World keyboard and camera controller
@@ -1039,7 +1376,7 @@ After stable imitation learning:
 - [ ] Safe handling of unsupported screens
 - [ ] Runtime confidence thresholds
 
-## Phase 5 — Autonomy
+## Phase 6 — Autonomy
 
 - [ ] Inventory-state model
 - [ ] Recipe planner

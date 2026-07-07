@@ -16,11 +16,35 @@ public record InputSnapshot(
         boolean attack,
         boolean use,
 
-        // Jednorazowe naciśnięcie klawisza E.
+        /*
+         * Akcja otwarcia/zamknięcia ekwipunku gracza.
+         */
         boolean inventory,
 
-        // Stan ekranu ekwipunku.
+        /*
+         * Czy otwarty jest zwykły InventoryScreen.
+         */
         boolean inventoryOpen,
+
+        /*
+         * Czy otwarty jest jakikolwiek ekran:
+         * inventory, crafting table, skrzynia, piec,
+         * chat, menu itd.
+         */
+        boolean guiOpen,
+
+        /*
+         * Nazwa klasy aktualnego ekranu,
+         * np. InventoryScreen, CraftingScreen,
+         * ChestScreen albo NONE.
+         */
+        String screenType,
+
+        /*
+         * Akcja zmiany hotbara.
+         */
+        boolean hotbarChanged,
+        int hotbarTarget,
 
         float yaw,
         float pitch,
