@@ -3,6 +3,7 @@ package pl.pixeloza.mc_ai_recorder.client.recording;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class RecordingManager {
-    private static final String MOD_VERSION = "0.3.0";
+    private static final String MOD_VERSION = "0.4.0";
     private static final String MINECRAFT_VERSION = "26.1.2";
 
     private final Gson gson =
@@ -28,10 +29,6 @@ public class RecordingManager {
     private float lastPitch = 0.0f;
 
     private boolean lastInventoryOpen = false;
-
-    /*
-     * Poprzednio wybrany slot hotbara.
-     */
     private int lastSelectedSlot = -1;
 
     private JsonlWriter actionsWriter;
@@ -91,6 +88,8 @@ public class RecordingManager {
                             + snapshot.screenType()
                             + " slot="
                             + snapshot.slotId()
+                            + " interaction="
+                            + snapshot.interactionId()
             );
         } catch (IOException e) {
             sendMessage(
@@ -132,14 +131,33 @@ public class RecordingManager {
         lastYaw = yaw;
         lastPitch = pitch;
 
+        Screen currentScreen =
+                client.screen;
+
         boolean inventoryOpen =
-                client.screen instanceof InventoryScreen;
+                currentScreen instanceof InventoryScreen;
 
         boolean inventoryToggled =
                 inventoryOpen != lastInventoryOpen;
 
         lastInventoryOpen =
                 inventoryOpen;
+
+        /*
+         * guiOpen obejmuje wszystkie ekrany.
+         *
+         * Dzięki temu później world dataset może odrzucić:
+         * CraftingScreen, InventoryScreen, ChestScreen itd.
+         */
+        boolean guiOpen =
+                currentScreen != null;
+
+        String screenType =
+                currentScreen != null
+                        ? currentScreen
+                        .getClass()
+                        .getSimpleName()
+                        : "NONE";
 
         int selectedSlot =
                 client.player
@@ -170,8 +188,11 @@ public class RecordingManager {
                         .getSelectedItem()
                         .getCount();
 
-        String dimension = "unknown";
-        String biome = "unknown";
+        String dimension =
+                "unknown";
+
+        String biome =
+                "unknown";
 
         if (client.level != null) {
             dimension =
@@ -180,14 +201,15 @@ public class RecordingManager {
                             .toString();
 
             try {
-                biome = client.level
-                        .getBiome(
-                                client.player
-                                        .blockPosition()
-                        )
-                        .unwrapKey()
-                        .map(Object::toString)
-                        .orElse("unknown");
+                biome =
+                        client.level
+                                .getBiome(
+                                        client.player
+                                                .blockPosition()
+                                )
+                                .unwrapKey()
+                                .map(Object::toString)
+                                .orElse("unknown");
             } catch (Exception ignored) {
                 biome = "unknown";
             }
@@ -215,6 +237,9 @@ public class RecordingManager {
                         inventoryToggled,
                         inventoryOpen,
 
+                        guiOpen,
+                        screenType,
+
                         hotbarChanged,
                         hotbarTarget,
 
@@ -228,6 +253,7 @@ public class RecordingManager {
                         client.player.getZ(),
 
                         client.player.getHealth(),
+
                         client.player
                                 .getFoodData()
                                 .getFoodLevel(),
@@ -254,15 +280,18 @@ public class RecordingManager {
                     frameName
             );
 
-            if (tick % 100 == 0
-                    && frameCapture != null) {
+            actionsWriter.write(snapshot);
 
+            if (tick % 100 == 0) {
                 System.out.println(
                         "[MC AI Recorder] Tick: "
                                 + tick
                                 + ", frame queue: "
-                                + frameCapture
-                                .getQueueSize()
+                                + frameCapture.getQueueSize()
+                                + ", guiOpen: "
+                                + guiOpen
+                                + ", screen: "
+                                + screenType
                 );
             }
 
@@ -289,8 +318,6 @@ public class RecordingManager {
                                 + hotbarTarget
                 );
             }
-
-            actionsWriter.write(snapshot);
         } catch (IOException e) {
             sendMessage(
                     "ERROR writing recording data: "
@@ -325,8 +352,7 @@ public class RecordingManager {
             }
 
             lastInventoryOpen =
-                    client.screen
-                            instanceof InventoryScreen;
+                    client.screen instanceof InventoryScreen;
 
             startedAt =
                     LocalDateTime.now()
@@ -393,18 +419,6 @@ public class RecordingManager {
             System.out.println(
                     "[MC AI Recorder] Recording started: "
                             + episodeDir
-            );
-
-            System.out.println(
-                    "[MC AI Recorder] Frames directory: "
-                            + framesDir
-            );
-
-            System.out.println(
-                    "[MC AI Recorder] GUI actions file: "
-                            + episodeDir.resolve(
-                            "gui_actions.jsonl"
-                    )
             );
         } catch (IOException e) {
             sendMessage(

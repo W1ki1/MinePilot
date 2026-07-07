@@ -41,6 +41,20 @@ public record GuiInteractionSnapshot(
         int carriedItemCountBefore,
 
         String carriedItemAfter,
-        int carriedItemCountAfter
+        int carriedItemCountAfter,
+
+        /*
+         * Wspólny identyfikator kliknięcia/przeciągnięcia.
+         *
+         * Wszystkie zdarzenia jednego dragowania mają
+         * taki sam interactionId.
+         */
+        long interactionId,
+
+        /*
+         * Ruch kursora przekazany przez event dragowania.
+         */
+        double dragDeltaX,
+        double dragDeltaY
 ) {
 }
