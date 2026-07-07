@@ -1,5 +1,6 @@
 package pl.pixeloza.mc_ai_recorder.client;
 
+import pl.pixeloza.mc_ai_recorder.client.recording.GuiInteractionRecorder;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -15,7 +16,9 @@ import pl.pixeloza.mc_ai_recorder.client.legacy.ActionReader;
 import pl.pixeloza.mc_ai_recorder.client.legacy.LiveFrameExporter;
 import pl.pixeloza.mc_ai_recorder.client.recording.RecordingManager;
 
-public class McAiRecorderClient implements ClientModInitializer {
+public class McAiRecorderClient
+        implements ClientModInitializer {
+
     private static final RecordingManager RECORDING_MANAGER =
             new RecordingManager();
 
@@ -41,104 +44,125 @@ public class McAiRecorderClient implements ClientModInitializer {
     public void onInitializeClient() {
         AiHud.register();
 
-        KeyMapping.Category category = KeyMapping.Category.register(
-                Identifier.fromNamespaceAndPath(
-                        "mc_ai_recorder",
-                        "main"
-                )
+        GuiInteractionRecorder.register(
+                RECORDING_MANAGER
         );
 
-        toggleHudKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping(
-                        "key.mc_ai_recorder.toggle_hud",
-                        InputConstants.Type.KEYSYM,
-                        GLFW.GLFW_KEY_H,
-                        category
-                )
+        KeyMapping.Category category =
+                KeyMapping.Category.register(
+                        Identifier.fromNamespaceAndPath(
+                                "mc_ai_recorder",
+                                "main"
+                        )
+                );
+
+        toggleHudKey =
+                KeyMappingHelper.registerKeyMapping(
+                        new KeyMapping(
+                                "key.mc_ai_recorder.toggle_hud",
+                                InputConstants.Type.KEYSYM,
+                                GLFW.GLFW_KEY_H,
+                                category
+                        )
+                );
+
+        toggleRecordingKey =
+                KeyMappingHelper.registerKeyMapping(
+                        new KeyMapping(
+                                "key.mc_ai_recorder.toggle_recording",
+                                InputConstants.Type.KEYSYM,
+                                GLFW.GLFW_KEY_F8,
+                                category
+                        )
+                );
+
+        toggleLiveExportKey =
+                KeyMappingHelper.registerKeyMapping(
+                        new KeyMapping(
+                                "key.mc_ai_recorder.toggle_live_export",
+                                InputConstants.Type.KEYSYM,
+                                GLFW.GLFW_KEY_F9,
+                                category
+                        )
+                );
+
+        toggleAiControlKey =
+                KeyMappingHelper.registerKeyMapping(
+                        new KeyMapping(
+                                "key.mc_ai_recorder.toggle_ai_control",
+                                InputConstants.Type.KEYSYM,
+                                GLFW.GLFW_KEY_F10,
+                                category
+                        )
+                );
+
+        toggleTcpInferenceKey =
+                KeyMappingHelper.registerKeyMapping(
+                        new KeyMapping(
+                                "key.mc_ai_recorder.toggle_tcp_inference",
+                                InputConstants.Type.KEYSYM,
+                                GLFW.GLFW_KEY_F12,
+                                category
+                        )
+                );
+
+        ClientTickEvents.END_CLIENT_TICK.register(
+                client -> {
+                    while (toggleHudKey.consumeClick()) {
+                        AiHud.toggle();
+                    }
+
+                    while (toggleRecordingKey.consumeClick()) {
+                        RECORDING_MANAGER.toggleRecording();
+                    }
+
+                    while (toggleLiveExportKey.consumeClick()) {
+                        LIVE_FRAME_EXPORTER.toggle();
+                    }
+
+                    while (toggleAiControlKey.consumeClick()) {
+                        AI_CONTROLLER.toggle();
+                    }
+
+                    while (toggleTcpInferenceKey.consumeClick()) {
+                        TCP_INFERENCE_LOOP.toggle();
+                    }
+
+                    RECORDING_MANAGER.onClientTick(
+                            client
+                    );
+
+                    LIVE_FRAME_EXPORTER.onClientTick(
+                            client
+                    );
+
+                    ACTION_READER.onClientTick(
+                            client
+                    );
+
+                    TCP_INFERENCE_LOOP.onClientTick(
+                            client
+                    );
+
+                    AiAction tcpAction =
+                            TCP_INFERENCE_LOOP
+                                    .getLastAction();
+
+                    AiAction fileAction =
+                            ACTION_READER
+                                    .getLastAction();
+
+                    AiAction selectedAction =
+                            tcpAction != null
+                                    ? tcpAction
+                                    : fileAction;
+
+                    AI_CONTROLLER.onClientTick(
+                            client,
+                            selectedAction
+                    );
+                }
         );
-
-        toggleRecordingKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping(
-                        "key.mc_ai_recorder.toggle_recording",
-                        InputConstants.Type.KEYSYM,
-                        GLFW.GLFW_KEY_F8,
-                        category
-                )
-        );
-
-        toggleLiveExportKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping(
-                        "key.mc_ai_recorder.toggle_live_export",
-                        InputConstants.Type.KEYSYM,
-                        GLFW.GLFW_KEY_F9,
-                        category
-                )
-        );
-
-        toggleAiControlKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping(
-                        "key.mc_ai_recorder.toggle_ai_control",
-                        InputConstants.Type.KEYSYM,
-                        GLFW.GLFW_KEY_F10,
-                        category
-                )
-        );
-
-        toggleTcpInferenceKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping(
-                        "key.mc_ai_recorder.toggle_tcp_inference",
-                        InputConstants.Type.KEYSYM,
-                        GLFW.GLFW_KEY_F12,
-                        category
-                )
-        );
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (toggleHudKey.consumeClick()) {
-                AiHud.toggle();
-            }
-
-            while (toggleRecordingKey.consumeClick()) {
-                RECORDING_MANAGER.toggleRecording();
-            }
-
-            while (toggleLiveExportKey.consumeClick()) {
-                LIVE_FRAME_EXPORTER.toggle();
-            }
-
-            while (toggleAiControlKey.consumeClick()) {
-                AI_CONTROLLER.toggle();
-            }
-
-            while (toggleTcpInferenceKey.consumeClick()) {
-                TCP_INFERENCE_LOOP.toggle();
-            }
-
-            RECORDING_MANAGER.onClientTick(client);
-
-            // Stary eksport klatek przez live.png.
-            LIVE_FRAME_EXPORTER.onClientTick(client);
-
-            // Stary odczyt decyzji z action.json.
-            ACTION_READER.onClientTick(client);
-
-            // Nowy inference przez TCP.
-            TCP_INFERENCE_LOOP.onClientTick(client);
-
-            AiAction tcpAction =
-                    TCP_INFERENCE_LOOP.getLastAction();
-
-            AiAction fileAction =
-                    ACTION_READER.getLastAction();
-
-            AiAction selectedAction =
-                    tcpAction != null ? tcpAction : fileAction;
-
-            AI_CONTROLLER.onClientTick(
-                    client,
-                    selectedAction
-            );
-        });
 
         System.out.println(
                 "[MC AI Recorder] Client initialized"
