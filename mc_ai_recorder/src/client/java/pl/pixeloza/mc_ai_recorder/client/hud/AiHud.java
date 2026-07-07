@@ -1,0 +1,188 @@
+package pl.pixeloza.mc_ai_recorder.client.hud;
+
+import pl.pixeloza.mc_ai_recorder.client.inference.AiAction;
+
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
+
+public final class AiHud {
+    private AiHud() {
+    }
+
+    public static void register() {
+        HudElementRegistry.attachElementBefore(
+                VanillaHudElements.CHAT,
+                Identifier.fromNamespaceAndPath(
+                        "mc_ai_recorder",
+                        "ai_debug_hud"
+                ),
+                AiHud::render
+        );
+    }
+
+    private static void render(
+            GuiGraphicsExtractor graphics,
+            DeltaTracker deltaTracker
+    ) {
+        Minecraft client = Minecraft.getInstance();
+
+        if (client.player == null || client.font == null) {
+            return;
+        }
+
+        int x = 8;
+        int y = 8;
+        int lineHeight = 10;
+
+        int white = 0xFFFFFFFF;
+        int cyan = 0xFF55FFFF;
+        int green = 0xFF55FF55;
+        int red = 0xFFFF5555;
+        int yellow = 0xFFFFFF55;
+
+        // Półprzezroczyste tło HUD-u.
+        graphics.fill(
+                x - 4,
+                y - 4,
+                x + 235,
+                y + 105,
+                0x90000000
+        );
+
+        graphics.text(
+                client.font,
+                "OpenCraft AI",
+                x,
+                y,
+                cyan,
+                true
+        );
+        y += lineHeight + 2;
+
+        graphics.text(
+                client.font,
+                "TCP: " + (AiDebugState.tcpEnabled ? "ON" : "OFF"),
+                x,
+                y,
+                AiDebugState.tcpEnabled ? green : red,
+                true
+        );
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                "Control: "
+                        + (AiDebugState.aiControlEnabled ? "ON" : "OFF"),
+                x,
+                y,
+                AiDebugState.aiControlEnabled ? green : red,
+                true
+        );
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                "Connected: " + AiDebugState.connected,
+                x,
+                y,
+                AiDebugState.connected ? green : red,
+                true
+        );
+        y += lineHeight;
+
+        String rttText = AiDebugState.lastRoundtripMs >= 0
+                ? AiDebugState.lastRoundtripMs + " ms"
+                : "---";
+
+        graphics.text(
+                client.font,
+                "RTT: " + rttText,
+                x,
+                y,
+                yellow,
+                true
+        );
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                "JPEG: " + AiDebugState.jpegSize + " bytes",
+                x,
+                y,
+                white,
+                true
+        );
+        y += lineHeight + 2;
+
+        AiAction action = AiDebugState.lastAction;
+
+        if (action == null
+                || action.buttons() == null
+                || action.camera() == null) {
+
+            graphics.text(
+                    client.font,
+                    "Action: waiting...",
+                    x,
+                    y,
+                    yellow,
+                    true
+            );
+
+            return;
+        }
+
+        graphics.text(
+                client.font,
+                "F:" + action.buttons().forward()
+                        + " B:" + action.buttons().back()
+                        + " L:" + action.buttons().left()
+                        + " R:" + action.buttons().right(),
+                x,
+                y,
+                white,
+                true
+        );
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                "J:" + action.buttons().jump()
+                        + " Sneak:" + action.buttons().sneak()
+                        + " Sprint:" + action.buttons().sprinting(),
+                x,
+                y,
+                white,
+                true
+        );
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                "Attack:" + action.buttons().attack()
+                        + " Use:" + action.buttons().use(),
+                x,
+                y,
+                white,
+                true
+        );
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                String.format(
+                        "Yaw: %.2f  Pitch: %.2f",
+                        action.camera().yawDelta(),
+                        action.camera().pitchDelta()
+                ),
+                x,
+                y,
+                white,
+                true
+        );
+    }
+}

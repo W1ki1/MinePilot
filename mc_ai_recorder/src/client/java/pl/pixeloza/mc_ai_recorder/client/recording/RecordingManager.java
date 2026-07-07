@@ -1,0 +1,242 @@
+package pl.pixeloza.mc_ai_recorder.client.recording;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class RecordingManager {
+    private static final String MOD_VERSION = "0.1.0";
+    private static final String MINECRAFT_VERSION = "26.1.2";
+
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+    private boolean recording = false;
+    private long tick = 0;
+
+    private float lastYaw = 0.0f;
+    private float lastPitch = 0.0f;
+
+    private JsonlWriter actionsWriter;
+    private FrameCapture frameCapture;
+
+    private Path episodeDir;
+    private Path framesDir;
+
+    private String episodeName;
+    private String startedAt;
+
+    public boolean isRecording() {
+        return recording;
+    }
+
+    public void toggleRecording() {
+        if (recording) {
+            stopRecording("normal");
+        } else {
+            startRecording();
+        }
+    }
+
+    public void onClientTick(Minecraft client) {
+        if (!recording || client.player == null || client.options == null) {
+            return;
+        }
+
+        tick++;
+
+        String frameName = String.format("%06d.png", tick);
+
+        float yaw = client.player.getYRot();
+        float pitch = client.player.getXRot();
+
+        float yawDelta = yaw - lastYaw;
+        float pitchDelta = pitch - lastPitch;
+
+        lastYaw = yaw;
+        lastPitch = pitch;
+
+        String selectedItem = client.player.getInventory()
+                .getSelectedItem()
+                .getItem()
+                .toString();
+
+        int selectedItemCount = client.player.getInventory()
+                .getSelectedItem()
+                .getCount();
+
+        String dimension = "unknown";
+        String biome = "unknown";
+
+        if (client.level != null) {
+            dimension = client.level.dimension().toString();
+
+            try {
+                biome = client.level
+                        .getBiome(client.player.blockPosition())
+                        .unwrapKey()
+                        .map(Object::toString)
+                        .orElse("unknown");
+            } catch (Exception ignored) {
+                biome = "unknown";
+            }
+        }
+
+        InputSnapshot snapshot = new InputSnapshot(
+                tick,
+                System.currentTimeMillis(),
+                frameName,
+
+                client.options.keyUp.isDown(),
+                client.options.keyDown.isDown(),
+                client.options.keyLeft.isDown(),
+                client.options.keyRight.isDown(),
+                client.options.keyJump.isDown(),
+                client.options.keyShift.isDown(),
+                client.options.keySprint.isDown(),
+                client.player.isSprinting(),
+                client.options.keyAttack.isDown(),
+                client.options.keyUse.isDown(),
+
+                yaw,
+                pitch,
+                yawDelta,
+                pitchDelta,
+
+                client.player.getX(),
+                client.player.getY(),
+                client.player.getZ(),
+
+                client.player.getHealth(),
+                client.player.getFoodData().getFoodLevel(),
+                client.player.getInventory().getSelectedSlot(),
+
+                selectedItem,
+                selectedItemCount,
+
+                dimension,
+                biome,
+
+                client.player.onGround(),
+                client.player.isInWater(),
+                client.player.isUnderWater(),
+                client.player.isFallFlying(),
+
+                client.player.experienceLevel
+        );
+
+        try {
+            frameCapture.capture(client, frameName);
+
+            if (tick % 100 == 0 && frameCapture != null) {
+                System.out.println("[MC AI Recorder] Tick: " + tick + ", frame queue: " + frameCapture.getQueueSize());
+            }
+
+            actionsWriter.write(snapshot);
+        } catch (IOException e) {
+            sendMessage("ERROR writing recording data: " + e.getMessage());
+            e.printStackTrace();
+            stopRecording("error");
+        }
+    }
+
+    private void startRecording() {
+        try {
+            tick = 0;
+
+            if (Minecraft.getInstance().player != null) {
+                lastYaw = Minecraft.getInstance().player.getYRot();
+                lastPitch = Minecraft.getInstance().player.getXRot();
+            }
+
+            startedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+            episodeName = "episode_" + LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+
+            Path recordingsRoot = Path.of("G:/MinecraftAI/Recordings");
+            episodeDir = recordingsRoot.resolve(episodeName);
+            framesDir = episodeDir.resolve("frames");
+
+            Files.createDirectories(framesDir);
+
+            frameCapture = new FrameCapture(framesDir);
+            actionsWriter = new JsonlWriter(episodeDir.resolve("actions.jsonl"));
+
+            recording = true;
+            sendMessage("Recording started: " + episodeName);
+            System.out.println("[MC AI Recorder] Recording started: " + episodeDir);
+            System.out.println("[MC AI Recorder] Frames directory: " + framesDir);
+        } catch (IOException e) {
+            sendMessage("ERROR starting recording: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void stopRecording(String status) {
+        recording = false;
+
+        if (actionsWriter != null) {
+            try {
+                actionsWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            actionsWriter = null;
+        }
+
+        if (frameCapture != null) {
+            try {
+                frameCapture.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            frameCapture = null;
+        }
+        writeMetadata(status);
+
+        sendMessage("Recording stopped");
+        System.out.println("[MC AI Recorder] Recording stopped");
+    }
+
+    private void writeMetadata(String status) {
+        if (episodeDir == null) {
+            return;
+        }
+
+        EpisodeMetadata metadata = new EpisodeMetadata(
+                episodeName,
+                startedAt,
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                status,
+                tick,
+                MINECRAFT_VERSION,
+                MOD_VERSION
+        );
+
+        try {
+            Files.writeString(
+                    episodeDir.resolve("metadata.json"),
+                    gson.toJson(metadata)
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendMessage(String message) {
+        Minecraft client = Minecraft.getInstance();
+
+        if (client.player != null) {
+            client.player.sendSystemMessage(
+                    Component.literal("[MC AI Recorder] " + message)
+            );
+        }
+    }
+}

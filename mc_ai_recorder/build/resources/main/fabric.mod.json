@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "mc_ai_recorder",
+	"version": "0.1.0",
+	"name": "MC AI Recorder",
+	"description": "Client-side dataset recorder for Minecraft AI behavior cloning.",
+	"authors": [
+		"Juliusz"
+	],
+	"license": "All Rights Reserved",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"pl.pixeloza.mc_ai_recorder.client.McAiRecorderClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
