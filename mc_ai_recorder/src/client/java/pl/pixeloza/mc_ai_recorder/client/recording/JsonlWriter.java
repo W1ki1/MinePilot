@@ -9,21 +9,34 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class JsonlWriter implements AutoCloseable {
-    private final Gson gson = new GsonBuilder().create();
+    private final Gson gson =
+            new GsonBuilder().create();
+
     private final BufferedWriter writer;
 
     public JsonlWriter(Path file) throws IOException {
-        Files.createDirectories(file.getParent());
-        this.writer = Files.newBufferedWriter(file);
+        Files.createDirectories(
+                file.getParent()
+        );
+
+        this.writer =
+                Files.newBufferedWriter(file);
     }
 
-    public void write(Object object) throws IOException {
-        writer.write(gson.toJson(object));
+    public synchronized void write(
+            Object object
+    ) throws IOException {
+        writer.write(
+                gson.toJson(object)
+        );
+
         writer.newLine();
     }
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close()
+            throws IOException {
+
         writer.flush();
         writer.close();
     }

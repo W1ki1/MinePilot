@@ -16,11 +16,15 @@ public record InputSnapshot(
         boolean attack,
         boolean use,
 
-        // Jednorazowe naciśnięcie klawisza E.
         boolean inventory,
-
-        // Stan ekranu ekwipunku.
         boolean inventoryOpen,
+
+        /*
+         * hotbarChanged = czy w tym ticku wybrano inny slot
+         * hotbarTarget  = 0-8 albo -1, gdy nie było zmiany
+         */
+        boolean hotbarChanged,
+        int hotbarTarget,
 
         float yaw,
         float pitch,

@@ -13,11 +13,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class RecordingManager {
-    private static final String MOD_VERSION = "0.2.0";
+    private static final String MOD_VERSION = "0.3.0";
     private static final String MINECRAFT_VERSION = "26.1.2";
 
     private final Gson gson =
-            new GsonBuilder().setPrettyPrinting().create();
+            new GsonBuilder()
+                    .setPrettyPrinting()
+                    .create();
 
     private boolean recording = false;
     private long tick = 0;
@@ -25,17 +27,16 @@ public class RecordingManager {
     private float lastYaw = 0.0f;
     private float lastPitch = 0.0f;
 
-    /*
-     * Poprzedni stan ekranu ekwipunku.
-     *
-     * Dzięki temu wykrywamy:
-     *
-     * false -> true  = otwarcie EQ
-     * true  -> false = zamknięcie EQ
-     */
     private boolean lastInventoryOpen = false;
 
+    /*
+     * Poprzednio wybrany slot hotbara.
+     */
+    private int lastSelectedSlot = -1;
+
     private JsonlWriter actionsWriter;
+    private JsonlWriter guiActionsWriter;
+
     private FrameCapture frameCapture;
 
     private Path episodeDir;
@@ -48,6 +49,21 @@ public class RecordingManager {
         return recording;
     }
 
+    public long getCurrentTick() {
+        return tick;
+    }
+
+    public String getCurrentFrameName() {
+        if (tick <= 0) {
+            return "";
+        }
+
+        return String.format(
+                "%06d.png",
+                tick
+        );
+    }
+
     public void toggleRecording() {
         if (recording) {
             stopRecording("normal");
@@ -56,7 +72,40 @@ public class RecordingManager {
         }
     }
 
-    public void onClientTick(Minecraft client) {
+    public void recordGuiInteraction(
+            GuiInteractionSnapshot snapshot
+    ) {
+        if (!recording
+                || guiActionsWriter == null
+                || snapshot == null) {
+            return;
+        }
+
+        try {
+            guiActionsWriter.write(snapshot);
+
+            System.out.println(
+                    "[MC AI Recorder] GUI action: "
+                            + snapshot.actionType()
+                            + " screen="
+                            + snapshot.screenType()
+                            + " slot="
+                            + snapshot.slotId()
+            );
+        } catch (IOException e) {
+            sendMessage(
+                    "ERROR writing GUI action: "
+                            + e.getMessage()
+            );
+
+            e.printStackTrace();
+            stopRecording("error");
+        }
+    }
+
+    public void onClientTick(
+            Minecraft client
+    ) {
         if (!recording
                 || client.player == null
                 || client.options == null) {
@@ -65,59 +114,76 @@ public class RecordingManager {
 
         tick++;
 
-        String frameName = String.format(
-                "%06d.png",
-                tick
-        );
+        String frameName =
+                getCurrentFrameName();
 
-        float yaw = client.player.getYRot();
-        float pitch = client.player.getXRot();
+        float yaw =
+                client.player.getYRot();
 
-        float yawDelta = yaw - lastYaw;
-        float pitchDelta = pitch - lastPitch;
+        float pitch =
+                client.player.getXRot();
+
+        float yawDelta =
+                yaw - lastYaw;
+
+        float pitchDelta =
+                pitch - lastPitch;
 
         lastYaw = yaw;
         lastPitch = pitch;
 
-        /*
-         * Sprawdzamy faktyczny stan ekranu,
-         * zamiast stanu klawisza E.
-         */
         boolean inventoryOpen =
                 client.screen instanceof InventoryScreen;
 
-        /*
-         * Inventory jest impulsem true tylko przez jeden tick,
-         * gdy stan ekranu się zmieni.
-         */
         boolean inventoryToggled =
                 inventoryOpen != lastInventoryOpen;
 
-        lastInventoryOpen = inventoryOpen;
+        lastInventoryOpen =
+                inventoryOpen;
 
-        String selectedItem = client.player
-                .getInventory()
-                .getSelectedItem()
-                .getItem()
-                .toString();
+        int selectedSlot =
+                client.player
+                        .getInventory()
+                        .getSelectedSlot();
 
-        int selectedItemCount = client.player
-                .getInventory()
-                .getSelectedItem()
-                .getCount();
+        boolean hotbarChanged =
+                selectedSlot != lastSelectedSlot;
+
+        int hotbarTarget =
+                hotbarChanged
+                        ? selectedSlot
+                        : -1;
+
+        lastSelectedSlot =
+                selectedSlot;
+
+        String selectedItem =
+                client.player
+                        .getInventory()
+                        .getSelectedItem()
+                        .getItem()
+                        .toString();
+
+        int selectedItemCount =
+                client.player
+                        .getInventory()
+                        .getSelectedItem()
+                        .getCount();
 
         String dimension = "unknown";
         String biome = "unknown";
 
         if (client.level != null) {
-            dimension = client.level
-                    .dimension()
-                    .toString();
+            dimension =
+                    client.level
+                            .dimension()
+                            .toString();
 
             try {
                 biome = client.level
                         .getBiome(
-                                client.player.blockPosition()
+                                client.player
+                                        .blockPosition()
                         )
                         .unwrapKey()
                         .map(Object::toString)
@@ -127,58 +193,60 @@ public class RecordingManager {
             }
         }
 
-        InputSnapshot snapshot = new InputSnapshot(
-                tick,
-                System.currentTimeMillis(),
-                frameName,
+        InputSnapshot snapshot =
+                new InputSnapshot(
+                        tick,
+                        System.currentTimeMillis(),
+                        frameName,
 
-                client.options.keyUp.isDown(),
-                client.options.keyDown.isDown(),
-                client.options.keyLeft.isDown(),
-                client.options.keyRight.isDown(),
+                        client.options.keyUp.isDown(),
+                        client.options.keyDown.isDown(),
+                        client.options.keyLeft.isDown(),
+                        client.options.keyRight.isDown(),
 
-                client.options.keyJump.isDown(),
-                client.options.keyShift.isDown(),
-                client.options.keySprint.isDown(),
-                client.player.isSprinting(),
+                        client.options.keyJump.isDown(),
+                        client.options.keyShift.isDown(),
+                        client.options.keySprint.isDown(),
+                        client.player.isSprinting(),
 
-                client.options.keyAttack.isDown(),
-                client.options.keyUse.isDown(),
+                        client.options.keyAttack.isDown(),
+                        client.options.keyUse.isDown(),
 
-                inventoryToggled,
-                inventoryOpen,
+                        inventoryToggled,
+                        inventoryOpen,
 
-                yaw,
-                pitch,
-                yawDelta,
-                pitchDelta,
+                        hotbarChanged,
+                        hotbarTarget,
 
-                client.player.getX(),
-                client.player.getY(),
-                client.player.getZ(),
+                        yaw,
+                        pitch,
+                        yawDelta,
+                        pitchDelta,
 
-                client.player.getHealth(),
-                client.player
-                        .getFoodData()
-                        .getFoodLevel(),
+                        client.player.getX(),
+                        client.player.getY(),
+                        client.player.getZ(),
 
-                client.player
-                        .getInventory()
-                        .getSelectedSlot(),
+                        client.player.getHealth(),
+                        client.player
+                                .getFoodData()
+                                .getFoodLevel(),
 
-                selectedItem,
-                selectedItemCount,
+                        selectedSlot,
 
-                dimension,
-                biome,
+                        selectedItem,
+                        selectedItemCount,
 
-                client.player.onGround(),
-                client.player.isInWater(),
-                client.player.isUnderWater(),
-                client.player.isFallFlying(),
+                        dimension,
+                        biome,
 
-                client.player.experienceLevel
-        );
+                        client.player.onGround(),
+                        client.player.isInWater(),
+                        client.player.isUnderWater(),
+                        client.player.isFallFlying(),
+
+                        client.player.experienceLevel
+                );
 
         try {
             frameCapture.capture(
@@ -193,16 +261,32 @@ public class RecordingManager {
                         "[MC AI Recorder] Tick: "
                                 + tick
                                 + ", frame queue: "
-                                + frameCapture.getQueueSize()
+                                + frameCapture
+                                .getQueueSize()
                 );
             }
 
             if (inventoryToggled) {
                 System.out.println(
-                        "[MC AI Recorder] Inventory toggle recorded at tick "
+                        "[MC AI Recorder] Inventory toggle "
+                                + "recorded at tick "
                                 + tick
                                 + " -> "
-                                + (inventoryOpen ? "OPEN" : "CLOSED")
+                                + (
+                                inventoryOpen
+                                        ? "OPEN"
+                                        : "CLOSED"
+                        )
+                );
+            }
+
+            if (hotbarChanged) {
+                System.out.println(
+                        "[MC AI Recorder] Hotbar changed "
+                                + "at tick "
+                                + tick
+                                + " -> slot "
+                                + hotbarTarget
                 );
             }
 
@@ -226,30 +310,39 @@ public class RecordingManager {
                     Minecraft.getInstance();
 
             if (client.player != null) {
-                lastYaw = client.player.getYRot();
-                lastPitch = client.player.getXRot();
+                lastYaw =
+                        client.player.getYRot();
+
+                lastPitch =
+                        client.player.getXRot();
+
+                lastSelectedSlot =
+                        client.player
+                                .getInventory()
+                                .getSelectedSlot();
+            } else {
+                lastSelectedSlot = -1;
             }
 
-            /*
-             * Zapamiętujemy stan początkowy,
-             * żeby rozpoczęcie nagrywania przy otwartym EQ
-             * nie stworzyło fałszywej akcji.
-             */
             lastInventoryOpen =
-                    client.screen instanceof InventoryScreen;
+                    client.screen
+                            instanceof InventoryScreen;
 
-            startedAt = LocalDateTime.now()
-                    .format(
-                            DateTimeFormatter.ISO_LOCAL_DATE_TIME
-                    );
+            startedAt =
+                    LocalDateTime.now()
+                            .format(
+                                    DateTimeFormatter
+                                            .ISO_LOCAL_DATE_TIME
+                            );
 
             episodeName =
                     "episode_"
                             + LocalDateTime.now()
                             .format(
-                                    DateTimeFormatter.ofPattern(
-                                            "yyyyMMdd_HHmmss"
-                                    )
+                                    DateTimeFormatter
+                                            .ofPattern(
+                                                    "yyyyMMdd_HHmmss"
+                                            )
                             );
 
             Path recordingsRoot =
@@ -263,17 +356,30 @@ public class RecordingManager {
                     );
 
             framesDir =
-                    episodeDir.resolve("frames");
+                    episodeDir.resolve(
+                            "frames"
+                    );
 
-            Files.createDirectories(framesDir);
+            Files.createDirectories(
+                    framesDir
+            );
 
             frameCapture =
-                    new FrameCapture(framesDir);
+                    new FrameCapture(
+                            framesDir
+                    );
 
             actionsWriter =
                     new JsonlWriter(
                             episodeDir.resolve(
                                     "actions.jsonl"
+                            )
+                    );
+
+            guiActionsWriter =
+                    new JsonlWriter(
+                            episodeDir.resolve(
+                                    "gui_actions.jsonl"
                             )
                     );
 
@@ -293,6 +399,13 @@ public class RecordingManager {
                     "[MC AI Recorder] Frames directory: "
                             + framesDir
             );
+
+            System.out.println(
+                    "[MC AI Recorder] GUI actions file: "
+                            + episodeDir.resolve(
+                            "gui_actions.jsonl"
+                    )
+            );
         } catch (IOException e) {
             sendMessage(
                     "ERROR starting recording: "
@@ -303,7 +416,9 @@ public class RecordingManager {
         }
     }
 
-    private void stopRecording(String status) {
+    private void stopRecording(
+            String status
+    ) {
         recording = false;
 
         if (actionsWriter != null) {
@@ -314,6 +429,16 @@ public class RecordingManager {
             }
 
             actionsWriter = null;
+        }
+
+        if (guiActionsWriter != null) {
+            try {
+                guiActionsWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            guiActionsWriter = null;
         }
 
         if (frameCapture != null) {
@@ -328,14 +453,18 @@ public class RecordingManager {
 
         writeMetadata(status);
 
-        sendMessage("Recording stopped");
+        sendMessage(
+                "Recording stopped"
+        );
 
         System.out.println(
                 "[MC AI Recorder] Recording stopped"
         );
     }
 
-    private void writeMetadata(String status) {
+    private void writeMetadata(
+            String status
+    ) {
         if (episodeDir == null) {
             return;
         }
@@ -344,10 +473,13 @@ public class RecordingManager {
                 new EpisodeMetadata(
                         episodeName,
                         startedAt,
-                        LocalDateTime.now().format(
-                                DateTimeFormatter
-                                        .ISO_LOCAL_DATE_TIME
-                        ),
+
+                        LocalDateTime.now()
+                                .format(
+                                        DateTimeFormatter
+                                                .ISO_LOCAL_DATE_TIME
+                                ),
+
                         status,
                         tick,
                         MINECRAFT_VERSION,
@@ -366,7 +498,9 @@ public class RecordingManager {
         }
     }
 
-    private void sendMessage(String message) {
+    private void sendMessage(
+            String message
+    ) {
         Minecraft client =
                 Minecraft.getInstance();
 
