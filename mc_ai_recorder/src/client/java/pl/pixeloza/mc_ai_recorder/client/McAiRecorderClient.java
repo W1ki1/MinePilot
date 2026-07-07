@@ -31,6 +31,7 @@ public class McAiRecorderClient implements ClientModInitializer {
     private static final TcpInferenceLoop TCP_INFERENCE_LOOP =
             new TcpInferenceLoop();
 
+    private KeyMapping toggleHudKey;
     private KeyMapping toggleRecordingKey;
     private KeyMapping toggleLiveExportKey;
     private KeyMapping toggleAiControlKey;
@@ -44,6 +45,15 @@ public class McAiRecorderClient implements ClientModInitializer {
                 Identifier.fromNamespaceAndPath(
                         "mc_ai_recorder",
                         "main"
+                )
+        );
+
+        toggleHudKey = KeyMappingHelper.registerKeyMapping(
+                new KeyMapping(
+                        "key.mc_ai_recorder.toggle_hud",
+                        InputConstants.Type.KEYSYM,
+                        GLFW.GLFW_KEY_H,
+                        category
                 )
         );
 
@@ -84,6 +94,10 @@ public class McAiRecorderClient implements ClientModInitializer {
         );
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (toggleHudKey.consumeClick()) {
+                AiHud.toggle();
+            }
+
             while (toggleRecordingKey.consumeClick()) {
                 RECORDING_MANAGER.toggleRecording();
             }
@@ -117,7 +131,6 @@ public class McAiRecorderClient implements ClientModInitializer {
             AiAction fileAction =
                     ACTION_READER.getLastAction();
 
-            // TCP ma pierwszeństwo przed starym systemem plikowym.
             AiAction selectedAction =
                     tcpAction != null ? tcpAction : fileAction;
 

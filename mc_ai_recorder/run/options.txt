@@ -59,7 +59,7 @@ sprintWindow:7
 darkMojangStudiosBackground:false
 hideLightningFlashes:false
 hideSplashTexts:false
-mouseSensitivity:0.5
+mouseSensitivity:0.18309859154929578
 damageTiltStrength:1.0
 highContrast:false
 highContrastBlockOutline:false
@@ -167,11 +167,12 @@ key_key.debug.profilingChart:key.keyboard.1
 key_key.debug.fpsCharts:key.keyboard.2
 key_key.debug.networkCharts:key.keyboard.3
 key_key.debug.lightmapTexture:key.keyboard.4
+key_key.mc_ai_recorder.toggle_hud:key.keyboard.h
 key_key.mc_ai_recorder.toggle_recording:key.keyboard.f8
 key_key.mc_ai_recorder.toggle_live_export:key.keyboard.f9
 key_key.mc_ai_recorder.toggle_ai_control:key.keyboard.f10
 key_key.mc_ai_recorder.toggle_tcp_inference:key.keyboard.f12
-soundCategory_master:1.0
+soundCategory_master:0.13079470198675497
 soundCategory_music:1.0
 soundCategory_record:1.0
 soundCategory_weather:1.0

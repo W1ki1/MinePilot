@@ -1,13 +1,13 @@
 package pl.pixeloza.mc_ai_recorder.client.hud;
 
-import pl.pixeloza.mc_ai_recorder.client.inference.AiAction;
-
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import pl.pixeloza.mc_ai_recorder.client.inference.AiAction;
 
 public final class AiHud {
     private AiHud() {
@@ -24,10 +24,33 @@ public final class AiHud {
         );
     }
 
+    public static void toggle() {
+        AiDebugState.hudVisible = !AiDebugState.hudVisible;
+
+        Minecraft client = Minecraft.getInstance();
+
+        if (client.player != null) {
+            client.player.sendSystemMessage(
+                    Component.literal(
+                            "[MC AI Recorder] Debug HUD: "
+                                    + (AiDebugState.hudVisible ? "ON" : "OFF")
+                    )
+            );
+        }
+    }
+
+    public static boolean isVisible() {
+        return AiDebugState.hudVisible;
+    }
+
     private static void render(
             GuiGraphicsExtractor graphics,
             DeltaTracker deltaTracker
     ) {
+        if (!AiDebugState.hudVisible) {
+            return;
+        }
+
         Minecraft client = Minecraft.getInstance();
 
         if (client.player == null || client.font == null) {
@@ -44,7 +67,6 @@ public final class AiHud {
         int red = 0xFFFF5555;
         int yellow = 0xFFFFFF55;
 
-        // Półprzezroczyste tło HUD-u.
         graphics.fill(
                 x - 4,
                 y - 4,

@@ -6,6 +6,9 @@ public final class AiDebugState {
     private AiDebugState() {
     }
 
+    // HUD jest domyślnie widoczny.
+    public static volatile boolean hudVisible = true;
+
     public static volatile boolean tcpEnabled = false;
     public static volatile boolean aiControlEnabled = false;
     public static volatile boolean connected = false;

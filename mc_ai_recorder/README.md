@@ -206,12 +206,13 @@ src/main/resources
 
 # Minecraft Controls
 
-| Key | Action |
-|---|---|
-| F8 | Start or stop dataset recording |
-| F9 | Legacy live-frame export |
-| F10 | Enable or disable AI control |
+| Key | Action                          |
+|-----|---------------------------------|
+| F8  | Start or stop dataset recording |
+| F9  | Legacy live-frame export        |
+| F10 | Enable or disable AI control    |
 | F12 | Enable or disable TCP inference |
+| H   | Enable or disable HUD           |
 
 Recommended live AI startup order:
 
