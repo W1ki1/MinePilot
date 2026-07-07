@@ -16,6 +16,12 @@ public record InputSnapshot(
         boolean attack,
         boolean use,
 
+        // Jednorazowe naciśnięcie klawisza E.
+        boolean inventory,
+
+        // Stan ekranu ekwipunku.
+        boolean inventoryOpen,
+
         float yaw,
         float pitch,
         float yawDelta,

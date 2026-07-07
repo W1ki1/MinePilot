@@ -25,15 +25,21 @@ public final class AiHud {
     }
 
     public static void toggle() {
-        AiDebugState.hudVisible = !AiDebugState.hudVisible;
+        AiDebugState.hudVisible =
+                !AiDebugState.hudVisible;
 
-        Minecraft client = Minecraft.getInstance();
+        Minecraft client =
+                Minecraft.getInstance();
 
         if (client.player != null) {
             client.player.sendSystemMessage(
                     Component.literal(
                             "[MC AI Recorder] Debug HUD: "
-                                    + (AiDebugState.hudVisible ? "ON" : "OFF")
+                                    + (
+                                    AiDebugState.hudVisible
+                                            ? "ON"
+                                            : "OFF"
+                            )
                     )
             );
         }
@@ -51,9 +57,11 @@ public final class AiHud {
             return;
         }
 
-        Minecraft client = Minecraft.getInstance();
+        Minecraft client =
+                Minecraft.getInstance();
 
-        if (client.player == null || client.font == null) {
+        if (client.player == null
+                || client.font == null) {
             return;
         }
 
@@ -70,8 +78,8 @@ public final class AiHud {
         graphics.fill(
                 x - 4,
                 y - 4,
-                x + 235,
-                y + 105,
+                x + 250,
+                y + 118,
                 0x90000000
         );
 
@@ -83,42 +91,64 @@ public final class AiHud {
                 cyan,
                 true
         );
+
         y += lineHeight + 2;
 
         graphics.text(
                 client.font,
-                "TCP: " + (AiDebugState.tcpEnabled ? "ON" : "OFF"),
+                "TCP: "
+                        + (
+                        AiDebugState.tcpEnabled
+                                ? "ON"
+                                : "OFF"
+                ),
                 x,
                 y,
-                AiDebugState.tcpEnabled ? green : red,
+                AiDebugState.tcpEnabled
+                        ? green
+                        : red,
                 true
         );
+
         y += lineHeight;
 
         graphics.text(
                 client.font,
                 "Control: "
-                        + (AiDebugState.aiControlEnabled ? "ON" : "OFF"),
+                        + (
+                        AiDebugState.aiControlEnabled
+                                ? "ON"
+                                : "OFF"
+                ),
                 x,
                 y,
-                AiDebugState.aiControlEnabled ? green : red,
+                AiDebugState.aiControlEnabled
+                        ? green
+                        : red,
                 true
         );
+
         y += lineHeight;
 
         graphics.text(
                 client.font,
-                "Connected: " + AiDebugState.connected,
+                "Connected: "
+                        + AiDebugState.connected,
                 x,
                 y,
-                AiDebugState.connected ? green : red,
+                AiDebugState.connected
+                        ? green
+                        : red,
                 true
         );
+
         y += lineHeight;
 
-        String rttText = AiDebugState.lastRoundtripMs >= 0
-                ? AiDebugState.lastRoundtripMs + " ms"
-                : "---";
+        String rttText =
+                AiDebugState.lastRoundtripMs >= 0
+                        ? AiDebugState.lastRoundtripMs
+                          + " ms"
+                        : "---";
 
         graphics.text(
                 client.font,
@@ -128,19 +158,24 @@ public final class AiHud {
                 yellow,
                 true
         );
+
         y += lineHeight;
 
         graphics.text(
                 client.font,
-                "JPEG: " + AiDebugState.jpegSize + " bytes",
+                "JPEG: "
+                        + AiDebugState.jpegSize
+                        + " bytes",
                 x,
                 y,
                 white,
                 true
         );
+
         y += lineHeight + 2;
 
-        AiAction action = AiDebugState.lastAction;
+        AiAction action =
+                AiDebugState.lastAction;
 
         if (action == null
                 || action.buttons() == null
@@ -160,38 +195,52 @@ public final class AiHud {
 
         graphics.text(
                 client.font,
-                "F:" + action.buttons().forward()
-                        + " B:" + action.buttons().back()
-                        + " L:" + action.buttons().left()
-                        + " R:" + action.buttons().right(),
+                "F:"
+                        + action.buttons().forward()
+                        + " B:"
+                        + action.buttons().back()
+                        + " L:"
+                        + action.buttons().left()
+                        + " R:"
+                        + action.buttons().right(),
                 x,
                 y,
                 white,
                 true
         );
+
         y += lineHeight;
 
         graphics.text(
                 client.font,
-                "J:" + action.buttons().jump()
-                        + " Sneak:" + action.buttons().sneak()
-                        + " Sprint:" + action.buttons().sprinting(),
+                "J:"
+                        + action.buttons().jump()
+                        + " Sneak:"
+                        + action.buttons().sneak()
+                        + " Sprint:"
+                        + action.buttons().sprinting(),
                 x,
                 y,
                 white,
                 true
         );
+
         y += lineHeight;
 
         graphics.text(
                 client.font,
-                "Attack:" + action.buttons().attack()
-                        + " Use:" + action.buttons().use(),
+                "Attack:"
+                        + action.buttons().attack()
+                        + " Use:"
+                        + action.buttons().use()
+                        + " INV:"
+                        + action.buttons().inventory(),
                 x,
                 y,
                 white,
                 true
         );
+
         y += lineHeight;
 
         graphics.text(

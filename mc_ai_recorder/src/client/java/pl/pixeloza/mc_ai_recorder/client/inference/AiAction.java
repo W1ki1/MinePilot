@@ -14,11 +14,16 @@ public record AiAction(
             boolean sneak,
             boolean sprinting,
             boolean attack,
-            boolean use
-    ) {}
+            boolean use,
+
+            // Jednorazowa akcja otwarcia lub zamknięcia EQ.
+            boolean inventory
+    ) {
+    }
 
     public record Camera(
             float yawDelta,
             float pitchDelta
-    ) {}
+    ) {
+    }
 }

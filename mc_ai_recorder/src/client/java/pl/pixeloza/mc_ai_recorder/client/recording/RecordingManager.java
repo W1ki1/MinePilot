@@ -3,6 +3,7 @@ package pl.pixeloza.mc_ai_recorder.client.recording;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
@@ -12,16 +13,27 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class RecordingManager {
-    private static final String MOD_VERSION = "0.1.0";
+    private static final String MOD_VERSION = "0.2.0";
     private static final String MINECRAFT_VERSION = "26.1.2";
 
-    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final Gson gson =
+            new GsonBuilder().setPrettyPrinting().create();
 
     private boolean recording = false;
     private long tick = 0;
 
     private float lastYaw = 0.0f;
     private float lastPitch = 0.0f;
+
+    /*
+     * Poprzedni stan ekranu ekwipunku.
+     *
+     * Dzięki temu wykrywamy:
+     *
+     * false -> true  = otwarcie EQ
+     * true  -> false = zamknięcie EQ
+     */
+    private boolean lastInventoryOpen = false;
 
     private JsonlWriter actionsWriter;
     private FrameCapture frameCapture;
@@ -45,13 +57,18 @@ public class RecordingManager {
     }
 
     public void onClientTick(Minecraft client) {
-        if (!recording || client.player == null || client.options == null) {
+        if (!recording
+                || client.player == null
+                || client.options == null) {
             return;
         }
 
         tick++;
 
-        String frameName = String.format("%06d.png", tick);
+        String frameName = String.format(
+                "%06d.png",
+                tick
+        );
 
         float yaw = client.player.getYRot();
         float pitch = client.player.getXRot();
@@ -62,12 +79,30 @@ public class RecordingManager {
         lastYaw = yaw;
         lastPitch = pitch;
 
-        String selectedItem = client.player.getInventory()
+        /*
+         * Sprawdzamy faktyczny stan ekranu,
+         * zamiast stanu klawisza E.
+         */
+        boolean inventoryOpen =
+                client.screen instanceof InventoryScreen;
+
+        /*
+         * Inventory jest impulsem true tylko przez jeden tick,
+         * gdy stan ekranu się zmieni.
+         */
+        boolean inventoryToggled =
+                inventoryOpen != lastInventoryOpen;
+
+        lastInventoryOpen = inventoryOpen;
+
+        String selectedItem = client.player
+                .getInventory()
                 .getSelectedItem()
                 .getItem()
                 .toString();
 
-        int selectedItemCount = client.player.getInventory()
+        int selectedItemCount = client.player
+                .getInventory()
                 .getSelectedItem()
                 .getCount();
 
@@ -75,11 +110,15 @@ public class RecordingManager {
         String biome = "unknown";
 
         if (client.level != null) {
-            dimension = client.level.dimension().toString();
+            dimension = client.level
+                    .dimension()
+                    .toString();
 
             try {
                 biome = client.level
-                        .getBiome(client.player.blockPosition())
+                        .getBiome(
+                                client.player.blockPosition()
+                        )
                         .unwrapKey()
                         .map(Object::toString)
                         .orElse("unknown");
@@ -97,12 +136,17 @@ public class RecordingManager {
                 client.options.keyDown.isDown(),
                 client.options.keyLeft.isDown(),
                 client.options.keyRight.isDown(),
+
                 client.options.keyJump.isDown(),
                 client.options.keyShift.isDown(),
                 client.options.keySprint.isDown(),
                 client.player.isSprinting(),
+
                 client.options.keyAttack.isDown(),
                 client.options.keyUse.isDown(),
+
+                inventoryToggled,
+                inventoryOpen,
 
                 yaw,
                 pitch,
@@ -114,8 +158,13 @@ public class RecordingManager {
                 client.player.getZ(),
 
                 client.player.getHealth(),
-                client.player.getFoodData().getFoodLevel(),
-                client.player.getInventory().getSelectedSlot(),
+                client.player
+                        .getFoodData()
+                        .getFoodLevel(),
+
+                client.player
+                        .getInventory()
+                        .getSelectedSlot(),
 
                 selectedItem,
                 selectedItemCount,
@@ -132,15 +181,38 @@ public class RecordingManager {
         );
 
         try {
-            frameCapture.capture(client, frameName);
+            frameCapture.capture(
+                    client,
+                    frameName
+            );
 
-            if (tick % 100 == 0 && frameCapture != null) {
-                System.out.println("[MC AI Recorder] Tick: " + tick + ", frame queue: " + frameCapture.getQueueSize());
+            if (tick % 100 == 0
+                    && frameCapture != null) {
+
+                System.out.println(
+                        "[MC AI Recorder] Tick: "
+                                + tick
+                                + ", frame queue: "
+                                + frameCapture.getQueueSize()
+                );
+            }
+
+            if (inventoryToggled) {
+                System.out.println(
+                        "[MC AI Recorder] Inventory toggle recorded at tick "
+                                + tick
+                                + " -> "
+                                + (inventoryOpen ? "OPEN" : "CLOSED")
+                );
             }
 
             actionsWriter.write(snapshot);
         } catch (IOException e) {
-            sendMessage("ERROR writing recording data: " + e.getMessage());
+            sendMessage(
+                    "ERROR writing recording data: "
+                            + e.getMessage()
+            );
+
             e.printStackTrace();
             stopRecording("error");
         }
@@ -150,31 +222,83 @@ public class RecordingManager {
         try {
             tick = 0;
 
-            if (Minecraft.getInstance().player != null) {
-                lastYaw = Minecraft.getInstance().player.getYRot();
-                lastPitch = Minecraft.getInstance().player.getXRot();
+            Minecraft client =
+                    Minecraft.getInstance();
+
+            if (client.player != null) {
+                lastYaw = client.player.getYRot();
+                lastPitch = client.player.getXRot();
             }
 
-            startedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            /*
+             * Zapamiętujemy stan początkowy,
+             * żeby rozpoczęcie nagrywania przy otwartym EQ
+             * nie stworzyło fałszywej akcji.
+             */
+            lastInventoryOpen =
+                    client.screen instanceof InventoryScreen;
 
-            episodeName = "episode_" + LocalDateTime.now()
-                    .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            startedAt = LocalDateTime.now()
+                    .format(
+                            DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                    );
 
-            Path recordingsRoot = Path.of("G:/MinecraftAI/Recordings");
-            episodeDir = recordingsRoot.resolve(episodeName);
-            framesDir = episodeDir.resolve("frames");
+            episodeName =
+                    "episode_"
+                            + LocalDateTime.now()
+                            .format(
+                                    DateTimeFormatter.ofPattern(
+                                            "yyyyMMdd_HHmmss"
+                                    )
+                            );
+
+            Path recordingsRoot =
+                    Path.of(
+                            "G:/MinecraftAI/Recordings"
+                    );
+
+            episodeDir =
+                    recordingsRoot.resolve(
+                            episodeName
+                    );
+
+            framesDir =
+                    episodeDir.resolve("frames");
 
             Files.createDirectories(framesDir);
 
-            frameCapture = new FrameCapture(framesDir);
-            actionsWriter = new JsonlWriter(episodeDir.resolve("actions.jsonl"));
+            frameCapture =
+                    new FrameCapture(framesDir);
+
+            actionsWriter =
+                    new JsonlWriter(
+                            episodeDir.resolve(
+                                    "actions.jsonl"
+                            )
+                    );
 
             recording = true;
-            sendMessage("Recording started: " + episodeName);
-            System.out.println("[MC AI Recorder] Recording started: " + episodeDir);
-            System.out.println("[MC AI Recorder] Frames directory: " + framesDir);
+
+            sendMessage(
+                    "Recording started: "
+                            + episodeName
+            );
+
+            System.out.println(
+                    "[MC AI Recorder] Recording started: "
+                            + episodeDir
+            );
+
+            System.out.println(
+                    "[MC AI Recorder] Frames directory: "
+                            + framesDir
+            );
         } catch (IOException e) {
-            sendMessage("ERROR starting recording: " + e.getMessage());
+            sendMessage(
+                    "ERROR starting recording: "
+                            + e.getMessage()
+            );
+
             e.printStackTrace();
         }
     }
@@ -188,6 +312,7 @@ public class RecordingManager {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
             actionsWriter = null;
         }
 
@@ -197,12 +322,17 @@ public class RecordingManager {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
             frameCapture = null;
         }
+
         writeMetadata(status);
 
         sendMessage("Recording stopped");
-        System.out.println("[MC AI Recorder] Recording stopped");
+
+        System.out.println(
+                "[MC AI Recorder] Recording stopped"
+        );
     }
 
     private void writeMetadata(String status) {
@@ -210,19 +340,25 @@ public class RecordingManager {
             return;
         }
 
-        EpisodeMetadata metadata = new EpisodeMetadata(
-                episodeName,
-                startedAt,
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                status,
-                tick,
-                MINECRAFT_VERSION,
-                MOD_VERSION
-        );
+        EpisodeMetadata metadata =
+                new EpisodeMetadata(
+                        episodeName,
+                        startedAt,
+                        LocalDateTime.now().format(
+                                DateTimeFormatter
+                                        .ISO_LOCAL_DATE_TIME
+                        ),
+                        status,
+                        tick,
+                        MINECRAFT_VERSION,
+                        MOD_VERSION
+                );
 
         try {
             Files.writeString(
-                    episodeDir.resolve("metadata.json"),
+                    episodeDir.resolve(
+                            "metadata.json"
+                    ),
                     gson.toJson(metadata)
             );
         } catch (IOException e) {
@@ -231,11 +367,15 @@ public class RecordingManager {
     }
 
     private void sendMessage(String message) {
-        Minecraft client = Minecraft.getInstance();
+        Minecraft client =
+                Minecraft.getInstance();
 
         if (client.player != null) {
             client.player.sendSystemMessage(
-                    Component.literal("[MC AI Recorder] " + message)
+                    Component.literal(
+                            "[MC AI Recorder] "
+                                    + message
+                    )
             );
         }
     }
