@@ -2,7 +2,6 @@ package pl.pixeloza.mc_ai_recorder.client.inference;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.io.DataInputStream;
@@ -11,21 +10,22 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.util.HashSet;
-import java.util.Set;
 
 public class ProtocolV2Client implements AutoCloseable {
+    private static final int CONNECT_TIMEOUT_MS =
+            2_000;
+
+    private static final int READ_TIMEOUT_MS =
+            3_500;
+
     private static final String CLIENT_VERSION =
-            "0.11.0";
+            "0.10.0";
 
     private static final String MINECRAFT_VERSION =
             "26.1.2";
 
     private final String host;
     private final int port;
-    private final int connectTimeoutMs;
-    private final int readTimeoutMs;
-    private final boolean requireServerCapabilities;
 
     private final Gson gson =
             new Gson();
@@ -39,19 +39,10 @@ public class ProtocolV2Client implements AutoCloseable {
 
     public ProtocolV2Client(
             String host,
-            int port,
-            int connectTimeoutMs,
-            int readTimeoutMs,
-            boolean requireServerCapabilities
+            int port
     ) {
         this.host = host;
         this.port = port;
-        this.connectTimeoutMs =
-                connectTimeoutMs;
-        this.readTimeoutMs =
-                readTimeoutMs;
-        this.requireServerCapabilities =
-                requireServerCapabilities;
     }
 
     public synchronized void connect()
@@ -71,7 +62,7 @@ public class ProtocolV2Client implements AutoCloseable {
                             host,
                             port
                     ),
-                    connectTimeoutMs
+                    CONNECT_TIMEOUT_MS
             );
 
             newSocket.setTcpNoDelay(
@@ -83,7 +74,7 @@ public class ProtocolV2Client implements AutoCloseable {
             );
 
             newSocket.setSoTimeout(
-                    readTimeoutMs
+                    READ_TIMEOUT_MS
             );
 
             socket = newSocket;
@@ -392,90 +383,7 @@ public class ProtocolV2Client implements AutoCloseable {
             );
         }
 
-        validateServerCapabilities(
-                ack
-        );
-
-        if (!ack.has("serverMode")
-                || !ack.get("serverMode")
-                .isJsonPrimitive()) {
-            throw new IOException(
-                    "ACK serverMode is missing"
-            );
-        }
-
         serverAck = ack.deepCopy();
-    }
-
-    public synchronized String getServerMode() {
-        if (serverAck == null
-                || !serverAck.has("serverMode")) {
-            return "UNKNOWN";
-        }
-
-        return serverAck.get(
-                "serverMode"
-        ).getAsString();
-    }
-
-    public synchronized String getServerReleaseId() {
-        if (serverAck == null
-                || !serverAck.has("releaseId")) {
-            return "UNSPECIFIED";
-        }
-
-        return serverAck.get(
-                "releaseId"
-        ).getAsString();
-    }
-
-    private void validateServerCapabilities(
-            JsonObject ack
-    ) throws IOException {
-        if (!requireServerCapabilities) {
-            return;
-        }
-
-        if (!ack.has("acceptedCapabilities")
-                || !ack.get("acceptedCapabilities")
-                .isJsonArray()) {
-            throw new IOException(
-                    "ACK acceptedCapabilities is missing"
-            );
-        }
-
-        Set<String> accepted =
-                new HashSet<>();
-
-        for (JsonElement element
-                : ack.getAsJsonArray(
-                "acceptedCapabilities"
-        )) {
-            if (element.isJsonPrimitive()) {
-                accepted.add(
-                        element.getAsString()
-                );
-            }
-        }
-
-        String[] required = {
-                "OBSERVATION_JPEG",
-                "ACTION_SAFE_IDLE",
-                "ACTION_WORLD",
-                "ACTION_GUI",
-                "HEARTBEAT"
-        };
-
-        for (String capability : required) {
-            if (!accepted.contains(
-                    capability
-            )) {
-                throw new IOException(
-                        "Backend did not accept required capability: "
-                                + capability
-                );
-            }
-        }
     }
 
     private void ensureConnected()

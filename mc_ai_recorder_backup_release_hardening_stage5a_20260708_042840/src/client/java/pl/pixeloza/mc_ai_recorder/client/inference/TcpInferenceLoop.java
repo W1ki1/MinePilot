@@ -3,22 +3,41 @@ package pl.pixeloza.mc_ai_recorder.client.inference;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import pl.pixeloza.mc_ai_recorder.client.config.RuntimeConfig;
 import pl.pixeloza.mc_ai_recorder.client.hud.AiDebugState;
 import pl.pixeloza.mc_ai_recorder.client.recording.RuntimeObservationFactory;
 
 import java.io.IOException;
 
 public class TcpInferenceLoop {
+    private static final String SERVER_HOST =
+            "192.168.0.11";
+
+    private static final int SERVER_PORT =
+            5005;
+
+    private static final int INFER_EVERY_TICKS =
+            2;
+
+    private static final long HEARTBEAT_INTERVAL_MS =
+            1_000L;
+
+    private static final long ACTION_TIMEOUT_MS =
+            750L;
+
+    private static final long RECONNECT_INTERVAL_MS =
+            1_000L;
+
     private final TcpFrameCapture frameCapture =
             new TcpFrameCapture();
 
     private final RuntimeObservationFactory observationFactory =
             new RuntimeObservationFactory();
 
-    private final RuntimeConfig runtimeConfig;
-
-    private final ProtocolV2Client protocolClient;
+    private final ProtocolV2Client protocolClient =
+            new ProtocolV2Client(
+                    SERVER_HOST,
+                    SERVER_PORT
+            );
 
     private final ProtocolActionRouter actionRouter =
             new ProtocolActionRouter();
@@ -47,23 +66,6 @@ public class TcpInferenceLoop {
 
     private volatile long tick = 0L;
     private volatile boolean controlEnabled = false;
-
-    public TcpInferenceLoop() {
-        runtimeConfig =
-                RuntimeConfig.load();
-
-        protocolClient =
-                new ProtocolV2Client(
-                        runtimeConfig.host(),
-                        runtimeConfig.port(),
-                        runtimeConfig.connectTimeoutMs(),
-                        runtimeConfig.readTimeoutMs(),
-                        runtimeConfig.requireServerCapabilities()
-                );
-
-        AiDebugState.serverEndpoint =
-                runtimeConfig.endpoint();
-    }
 
     public void toggle() {
         enabled = !enabled;
@@ -122,12 +124,6 @@ public class TcpInferenceLoop {
             AiDebugState.lastGuiResult =
                     "---";
 
-            AiDebugState.serverMode =
-                    "UNKNOWN";
-
-            AiDebugState.serverRelease =
-                    "UNSPECIFIED";
-
             guiActionExecutor.reset();
 
             closeInBackground();
@@ -139,8 +135,7 @@ public class TcpInferenceLoop {
                             "[MC AI Recorder] TCP protocol v2: "
                                     + (
                                     enabled
-                                            ? "ON @ "
-                                            + runtimeConfig.endpoint()
+                                            ? "ON"
                                             : "OFF"
                             )
                     )
@@ -178,7 +173,7 @@ public class TcpInferenceLoop {
                         && client.options != null;
 
         if (canObserve
-                && tick % runtimeConfig.inferEveryTicks() == 0) {
+                && tick % INFER_EVERY_TICKS == 0) {
             sendObservation(
                     client
             );
@@ -187,14 +182,14 @@ public class TcpInferenceLoop {
 
         if (protocolClient.isConnected()
                 && now - lastSuccessfulMessageMs
-                >= runtimeConfig.heartbeatIntervalMs()) {
+                >= HEARTBEAT_INTERVAL_MS) {
             sendHeartbeat();
             return;
         }
 
         if (!protocolClient.isConnected()
                 && now - lastReconnectAttemptMs
-                >= runtimeConfig.reconnectIntervalMs()) {
+                >= RECONNECT_INTERVAL_MS) {
             startConnect();
         }
     }
@@ -490,21 +485,11 @@ public class TcpInferenceLoop {
                                 AiDebugState.protocolState =
                                         "READY";
 
-                                AiDebugState.serverMode =
-                                        protocolClient
-                                                .getServerMode();
-
-                                AiDebugState.serverRelease =
-                                        protocolClient
-                                                .getServerReleaseId();
-
                                 System.out.println(
                                         "[MC AI Recorder] Protocol v2 connected to "
-                                                + runtimeConfig.endpoint()
-                                                + " mode="
-                                                + AiDebugState.serverMode
-                                                + " release="
-                                                + AiDebugState.serverRelease
+                                                + SERVER_HOST
+                                                + ':'
+                                                + SERVER_PORT
                                 );
                             } catch (IOException | RuntimeException e) {
                                 handleFailure(
@@ -535,7 +520,7 @@ public class TcpInferenceLoop {
         boolean expiredByTime =
                 lastActionReceivedMs > 0L
                         && now - lastActionReceivedMs
-                        > runtimeConfig.actionTimeoutMs();
+                        > ACTION_TIMEOUT_MS;
 
         boolean expiredByTick =
                 actionExpiryTick >= 0L
@@ -587,12 +572,6 @@ public class TcpInferenceLoop {
 
         AiDebugState.lastGuiResult =
                 "ERROR_SAFE_IDLE";
-
-        AiDebugState.serverMode =
-                "UNKNOWN";
-
-        AiDebugState.serverRelease =
-                "UNSPECIFIED";
 
         guiActionExecutor.reset();
 

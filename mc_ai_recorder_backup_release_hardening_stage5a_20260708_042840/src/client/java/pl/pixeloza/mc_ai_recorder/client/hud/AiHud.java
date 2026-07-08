@@ -79,7 +79,7 @@ public final class AiHud {
                 x - 4,
                 y - 4,
                 x + 330,
-                y + 235,
+                y + 205,
                 0x90000000
         );
 
@@ -121,32 +121,6 @@ public final class AiHud {
                 AiDebugState.connected
                         ? green
                         : yellow,
-                true
-        );
-
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "Endpoint: "
-                        + AiDebugState.serverEndpoint,
-                x,
-                y,
-                white,
-                true
-        );
-
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "Backend: "
-                        + AiDebugState.serverMode
-                        + " / "
-                        + AiDebugState.serverRelease,
-                x,
-                y,
-                yellow,
                 true
         );
 

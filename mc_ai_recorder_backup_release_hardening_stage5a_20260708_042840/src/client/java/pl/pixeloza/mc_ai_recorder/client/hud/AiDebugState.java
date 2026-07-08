@@ -15,15 +15,6 @@ public final class AiDebugState {
     public static volatile String protocolState =
             "OFF";
 
-    public static volatile String serverEndpoint =
-            "UNCONFIGURED";
-
-    public static volatile String serverMode =
-            "UNKNOWN";
-
-    public static volatile String serverRelease =
-            "UNSPECIFIED";
-
     public static volatile String lastProtocolAction =
             null;
 
