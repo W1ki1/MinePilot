@@ -79,7 +79,7 @@ public final class AiHud {
                 x - 4,
                 y - 4,
                 x + 330,
-                y + 205,
+                y + 190,
                 0x90000000
         );
 
@@ -231,18 +231,6 @@ public final class AiHud {
                 AiDebugState.lastAction != null
                         ? green
                         : yellow,
-                true
-        );
-
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "GUI result: "
-                        + AiDebugState.lastGuiResult,
-                x,
-                y,
-                white,
                 true
         );
 

@@ -21,9 +21,6 @@ public final class AiDebugState {
     public static volatile String lastRoute =
             "SAFE_IDLE";
 
-    public static volatile String lastGuiResult =
-            "---";
-
     public static volatile long lastObservationSequenceId =
             -1L;
 

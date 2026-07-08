@@ -42,9 +42,6 @@ public class TcpInferenceLoop {
     private final ProtocolActionRouter actionRouter =
             new ProtocolActionRouter();
 
-    private final GuiActionExecutor guiActionExecutor =
-            new GuiActionExecutor();
-
     private volatile boolean enabled = false;
     private volatile boolean requestInFlight = false;
 
@@ -120,11 +117,6 @@ public class TcpInferenceLoop {
 
             AiDebugState.lastActionSequenceId =
                     -1L;
-
-            AiDebugState.lastGuiResult =
-                    "---";
-
-            guiActionExecutor.reset();
 
             closeInBackground();
         }
@@ -220,49 +212,20 @@ public class TcpInferenceLoop {
                 routed.route().name();
 
         AiDebugState.lastAction =
-                routed.worldAction();
+                routed.action();
 
         if (action != null) {
             AiDebugState.lastProtocolAction =
                     action.summary();
         }
 
-        boolean applied =
-                routed.applied();
-
-        if (routed.guiAction() != null) {
-            GuiActionExecutor.ExecutionResult result =
-                    guiActionExecutor.execute(
-                            client,
-                            routed.guiAction(),
-                            pendingActionEnvelopeSequenceId
-                    );
-
-            AiDebugState.lastGuiResult =
-                    result.name();
-
-            applied =
-                    result
-                            == GuiActionExecutor
-                            .ExecutionResult
-                            .EXECUTED
-                            || result
-                            == GuiActionExecutor
-                            .ExecutionResult
-                            .DUPLICATE_IGNORED;
-        } else if (routed.route()
-                != ProtocolActionRouter.Route.GUI) {
-            AiDebugState.lastGuiResult =
-                    "---";
-        }
-
-        if (applied
+        if (routed.applied()
                 && pendingActionEnvelopeSequenceId >= 0L) {
             lastAppliedActionSequenceId =
                     pendingActionEnvelopeSequenceId;
         }
 
-        return routed.worldAction();
+        return routed.action();
     }
 
     public boolean isEnabled() {
@@ -538,9 +501,6 @@ public class TcpInferenceLoop {
         AiDebugState.lastAction =
                 null;
 
-        AiDebugState.lastGuiResult =
-                "TIMEOUT_SAFE_IDLE";
-
         AiDebugState.lastProtocolAction =
                 "TIMEOUT_SAFE_IDLE";
 
@@ -570,11 +530,6 @@ public class TcpInferenceLoop {
         AiDebugState.lastAction =
                 null;
 
-        AiDebugState.lastGuiResult =
-                "ERROR_SAFE_IDLE";
-
-        guiActionExecutor.reset();
-
         protocolClient.closeSilently();
 
         System.out.println(
@@ -595,7 +550,6 @@ public class TcpInferenceLoop {
         lastActionReceivedMs = 0L;
         lastReconnectAttemptMs = 0L;
         controlEnabled = false;
-        guiActionExecutor.reset();
     }
 
     private void closeInBackground() {

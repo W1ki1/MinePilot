@@ -1,12 +1,14 @@
 package pl.pixeloza.mc_ai_recorder.client.inference;
 
+import com.google.gson.JsonObject;
+
 public record ProtocolAction(
         int protocolVersion,
         long observationSequenceId,
         String actionType,
         SystemAction system,
         WorldAction world,
-        GuiAction gui,
+        JsonObject gui,
         Integer validForTicks,
         long createdAtMs
 ) {
@@ -79,7 +81,6 @@ public record ProtocolAction(
                 );
             }
 
-            gui.validate();
             return;
         }
 
@@ -128,7 +129,7 @@ public record ProtocolAction(
         }
 
         if (isGui()) {
-            return gui.summary();
+            return "GUI";
         }
 
         return actionType != null
@@ -227,148 +228,6 @@ public record ProtocolAction(
 
             if (pitchDeltaDegrees != 0.0f) {
                 result.append(":PITCH");
-            }
-
-            return result.toString();
-        }
-    }
-
-    public record GuiAction(
-            String operation,
-            String screenType,
-            String menuType,
-            Integer slotId,
-            Integer button,
-            String clickType,
-            Integer buttonId,
-            Integer quickCraftButton,
-            String expectedContainerFingerprint
-    ) {
-        public void validate() {
-            if (operation == null
-                    || screenType == null
-                    || menuType == null
-                    || screenType.isBlank()
-                    || menuType.isBlank()) {
-                throw new IllegalArgumentException(
-                        "GUI action requires operation and context"
-                );
-            }
-
-            switch (operation) {
-                case "CLICK_SLOT" -> {
-                    validateSlot();
-                    validateButton();
-                    validateClickType();
-                }
-
-                case "CLICK_OUTSIDE" -> {
-                    if (slotId != null
-                            && slotId != -999) {
-                        throw new IllegalArgumentException(
-                                "CLICK_OUTSIDE slotId must be -999 or null"
-                        );
-                    }
-
-                    validateButton();
-                    validateClickType();
-                }
-
-                case "QUICK_CRAFT_START",
-                     "QUICK_CRAFT_END" ->
-                        validateQuickCraftButton();
-
-                case "QUICK_CRAFT_ADD_SLOT" -> {
-                    validateSlot();
-                    validateQuickCraftButton();
-                }
-
-                case "BUTTON_CLICK" -> {
-                    if (buttonId == null
-                            || buttonId < 0
-                            || buttonId > 255) {
-                        throw new IllegalArgumentException(
-                                "buttonId must be 0..255"
-                        );
-                    }
-                }
-
-                case "CLOSE_SCREEN" -> {
-                }
-
-                default -> throw new IllegalArgumentException(
-                        "Unsupported GUI operation: "
-                                + operation
-                );
-            }
-        }
-
-        private void validateSlot() {
-            if (slotId == null
-                    || slotId < 0
-                    || slotId > 255) {
-                throw new IllegalArgumentException(
-                        "slotId must be 0..255"
-                );
-            }
-        }
-
-        private void validateButton() {
-            if (button == null
-                    || button < 0
-                    || button > 8) {
-                throw new IllegalArgumentException(
-                        "button must be 0..8"
-                );
-            }
-        }
-
-        private void validateQuickCraftButton() {
-            if (quickCraftButton == null
-                    || quickCraftButton < 0
-                    || quickCraftButton > 6) {
-                throw new IllegalArgumentException(
-                        "quickCraftButton must be 0..6"
-                );
-            }
-        }
-
-        private void validateClickType() {
-            if (clickType == null) {
-                throw new IllegalArgumentException(
-                        "clickType is required"
-                );
-            }
-
-            switch (clickType) {
-                case "PICKUP",
-                     "QUICK_MOVE",
-                     "SWAP",
-                     "CLONE",
-                     "THROW",
-                     "PICKUP_ALL" -> {
-                }
-
-                default -> throw new IllegalArgumentException(
-                        "Unsupported clickType: "
-                                + clickType
-                );
-            }
-        }
-
-        public String summary() {
-            StringBuilder result =
-                    new StringBuilder("GUI:")
-                            .append(operation);
-
-            if (clickType != null) {
-                result.append(':')
-                        .append(clickType);
-            }
-
-            if (slotId != null) {
-                result.append(":S")
-                        .append(slotId);
             }
 
             return result.toString();

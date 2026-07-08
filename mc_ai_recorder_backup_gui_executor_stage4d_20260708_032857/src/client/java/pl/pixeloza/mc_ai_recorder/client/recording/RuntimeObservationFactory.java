@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 
 public final class RuntimeObservationFactory {
     private static final int FRAME_WIDTH =
@@ -84,71 +83,6 @@ public final class RuntimeObservationFactory {
             observation.addProperty(
                     "lastAppliedActionSequenceId",
                     lastAppliedActionSequenceId
-            );
-        }
-
-        InventoryCapture inventoryCapture =
-                SnapshotFactory.captureInventory(
-                        client.player
-                );
-
-        observation.add(
-                "runtimeInventory",
-                gson.toJsonTree(
-                        inventoryCapture
-                )
-        );
-
-        JsonObject gui =
-                observation.getAsJsonObject(
-                        "gui"
-                );
-
-        if (client.screen
-                instanceof AbstractContainerScreen<?>) {
-            ContainerSourceSnapshot source =
-                    SnapshotFactory.containerSource(
-                            client,
-                            client.screen
-                    );
-
-            ContainerCapture containerCapture =
-                    SnapshotFactory.captureContainer(
-                            client,
-                            client.screen,
-                            source
-                    );
-
-            observation.add(
-                    "runtimeContainer",
-                    gson.toJsonTree(
-                            containerCapture
-                    )
-            );
-
-            gui.addProperty(
-                    "slotCount",
-                    containerCapture.slotCount()
-            );
-
-            gui.addProperty(
-                    "containerFingerprint",
-                    containerCapture.fingerprint()
-            );
-        } else {
-            observation.add(
-                    "runtimeContainer",
-                    JsonNull.INSTANCE
-            );
-
-            gui.addProperty(
-                    "slotCount",
-                    0
-            );
-
-            gui.add(
-                    "containerFingerprint",
-                    JsonNull.INSTANCE
             );
         }
 
