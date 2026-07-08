@@ -16,7 +16,7 @@ import java.util.Set;
 
 public class ProtocolV2Client implements AutoCloseable {
     private static final String CLIENT_VERSION =
-            "1.0.0";
+            "0.11.0";
 
     private static final String MINECRAFT_VERSION =
             "26.1.2";
