@@ -19,7 +19,7 @@ public class ProtocolV2Client implements AutoCloseable {
             3_500;
 
     private static final String CLIENT_VERSION =
-            "0.7.0";
+            "0.8.0";
 
     private static final String MINECRAFT_VERSION =
             "26.1.2";
@@ -310,6 +310,14 @@ public class ProtocolV2Client implements AutoCloseable {
 
         capabilities.add(
                 "ACTION_SAFE_IDLE"
+        );
+
+        capabilities.add(
+                "ACTION_WORLD"
+        );
+
+        capabilities.add(
+                "ACTION_GUI_SAFE_IDLE"
         );
 
         capabilities.add(

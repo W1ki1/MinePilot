@@ -141,7 +141,8 @@ public class McAiRecorderClient
                     );
 
                     TCP_INFERENCE_LOOP.onClientTick(
-                            client
+                            client,
+                            AI_CONTROLLER.isEnabled()
                     );
 
                     AiAction selectedAction;
@@ -149,7 +150,10 @@ public class McAiRecorderClient
                     if (TCP_INFERENCE_LOOP.isEnabled()) {
                         selectedAction =
                                 TCP_INFERENCE_LOOP
-                                        .getLastAction();
+                                        .resolveAction(
+                                                client,
+                                                AI_CONTROLLER.isEnabled()
+                                        );
                     } else {
                         selectedAction =
                                 ACTION_READER

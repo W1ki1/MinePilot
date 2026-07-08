@@ -78,8 +78,8 @@ public final class AiHud {
         graphics.fill(
                 x - 4,
                 y - 4,
-                x + 290,
-                y + 152,
+                x + 330,
+                y + 190,
                 0x90000000
         );
 
@@ -204,22 +204,35 @@ public final class AiHud {
                 true
         );
 
+        y += lineHeight;
+
+        graphics.text(
+                client.font,
+                "Route: "
+                        + AiDebugState.lastRoute,
+                x,
+                y,
+                yellow,
+                true
+        );
+
         y += lineHeight + 2;
 
-        if (AiDebugState.tcpEnabled
-                && AiDebugState.lastProtocolAction != null) {
-            graphics.text(
-                    client.font,
-                    "Action: "
-                            + AiDebugState.lastProtocolAction,
-                    x,
-                    y,
-                    green,
-                    true
-            );
+        String actionText =
+                AiDebugState.lastProtocolAction != null
+                        ? AiDebugState.lastProtocolAction
+                        : "waiting...";
 
-            return;
-        }
+        graphics.text(
+                client.font,
+                "Action: " + actionText,
+                x,
+                y,
+                AiDebugState.lastAction != null
+                        ? green
+                        : yellow,
+                true
+        );
 
         AiAction action =
                 AiDebugState.lastAction;
@@ -227,17 +240,10 @@ public final class AiHud {
         if (action == null
                 || action.buttons() == null
                 || action.camera() == null) {
-            graphics.text(
-                    client.font,
-                    "Action: waiting...",
-                    x,
-                    y,
-                    yellow,
-                    true
-            );
-
             return;
         }
+
+        y += lineHeight;
 
         graphics.text(
                 client.font,
@@ -292,9 +298,12 @@ public final class AiHud {
         graphics.text(
                 client.font,
                 String.format(
-                        "Yaw: %.2f  Pitch: %.2f",
+                        "Yaw: %.2f Pitch: %.2f Hotbar: %s",
                         action.camera().yawDelta(),
-                        action.camera().pitchDelta()
+                        action.camera().pitchDelta(),
+                        action.hotbarTarget() != null
+                                ? action.hotbarTarget()
+                                : "-"
                 ),
                 x,
                 y,

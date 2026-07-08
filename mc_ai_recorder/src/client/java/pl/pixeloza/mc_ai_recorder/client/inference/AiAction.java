@@ -3,7 +3,8 @@ package pl.pixeloza.mc_ai_recorder.client.inference;
 public record AiAction(
         long timestamp,
         Buttons buttons,
-        Camera camera
+        Camera camera,
+        Integer hotbarTarget
 ) {
     public record Buttons(
             boolean forward,
@@ -15,8 +16,6 @@ public record AiAction(
             boolean sprinting,
             boolean attack,
             boolean use,
-
-            // Jednorazowa akcja otwarcia lub zamknięcia EQ.
             boolean inventory
     ) {
     }

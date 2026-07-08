@@ -7,33 +7,24 @@ import pl.pixeloza.mc_ai_recorder.client.hud.AiDebugState;
 import pl.pixeloza.mc_ai_recorder.client.inference.AiAction;
 
 public class AiController {
-    private static final float CAMERA_SCALE = 1.0f;
-    private static final float MAX_CAMERA_DELTA = 5.0f;
+    private static final float CAMERA_SCALE =
+            1.0f;
 
-    /*
-     * Chroni przed szybkim:
-     *
-     * otwórz -> zamknij -> otwórz -> zamknij
-     */
-    private static final long INVENTORY_COOLDOWN_MS = 750L;
+    private static final float MAX_CAMERA_DELTA =
+            5.0f;
+
+    private static final long INVENTORY_COOLDOWN_MS =
+            750L;
 
     private boolean enabled = false;
-
-    /*
-     * Inventory jest impulsem.
-     *
-     * Akcję wykonujemy tylko przy przejściu:
-     *
-     * false -> true
-     */
     private boolean lastInventoryPrediction = false;
-
     private long lastInventoryToggleTime = 0L;
 
     public void toggle() {
         enabled = !enabled;
 
-        AiDebugState.aiControlEnabled = enabled;
+        AiDebugState.aiControlEnabled =
+                enabled;
 
         Minecraft client =
                 Minecraft.getInstance();
@@ -57,17 +48,21 @@ public class AiController {
         }
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     public void onClientTick(
             Minecraft client,
             AiAction action
     ) {
-        if (!enabled || client.player == null) {
+        if (!enabled
+                || client.player == null) {
             return;
         }
 
         if (action == null
                 || action.buttons() == null) {
-
             releaseKeys(client);
             lastInventoryPrediction = false;
             return;
@@ -76,34 +71,51 @@ public class AiController {
         AiAction.Buttons buttons =
                 action.buttons();
 
+        handleHotbar(
+                client,
+                action.hotbarTarget()
+        );
+
         handleInventory(
                 client,
                 buttons.inventory()
         );
 
-        /*
-         * Gdy jakiś ekran jest otwarty,
-         * nie trzymamy ruchu, ataku ani użycia.
-         */
         if (client.screen != null) {
             releaseKeys(client);
             return;
         }
 
-        client.options.keyUp.setDown(
+        boolean forward =
                 buttons.forward()
+                        && !buttons.back();
+
+        boolean back =
+                buttons.back()
+                        && !buttons.forward();
+
+        boolean left =
+                buttons.left()
+                        && !buttons.right();
+
+        boolean right =
+                buttons.right()
+                        && !buttons.left();
+
+        client.options.keyUp.setDown(
+                forward
         );
 
         client.options.keyDown.setDown(
-                buttons.back()
+                back
         );
 
         client.options.keyLeft.setDown(
-                buttons.left()
+                left
         );
 
         client.options.keyRight.setDown(
-                buttons.right()
+                right
         );
 
         client.options.keyJump.setDown(
@@ -134,6 +146,30 @@ public class AiController {
         }
     }
 
+    private void handleHotbar(
+            Minecraft client,
+            Integer hotbarTarget
+    ) {
+        if (hotbarTarget == null
+                || hotbarTarget < 0
+                || hotbarTarget > 8) {
+            return;
+        }
+
+        if (client.player
+                .getInventory()
+                .getSelectedSlot()
+                == hotbarTarget) {
+            return;
+        }
+
+        client.player
+                .getInventory()
+                .setSelectedSlot(
+                        hotbarTarget
+                );
+    }
+
     private void handleInventory(
             Minecraft client,
             boolean inventoryPrediction
@@ -159,10 +195,6 @@ public class AiController {
 
         lastInventoryToggleTime = now;
 
-        /*
-         * Brak ekranu:
-         * otwieramy ekwipunek.
-         */
         if (client.screen == null) {
             releaseKeys(client);
 
@@ -179,13 +211,8 @@ public class AiController {
             return;
         }
 
-        /*
-         * Ekwipunek już otwarty:
-         * zamykamy go.
-         */
         if (client.screen
                 instanceof InventoryScreen) {
-
             client.setScreen(null);
 
             System.out.println(

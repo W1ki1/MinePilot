@@ -39,17 +39,30 @@ public class TcpInferenceLoop {
                     SERVER_PORT
             );
 
+    private final ProtocolActionRouter actionRouter =
+            new ProtocolActionRouter();
+
     private volatile boolean enabled = false;
     private volatile boolean requestInFlight = false;
 
-    private volatile AiAction lastAction = null;
-    private volatile Long lastAppliedActionSequenceId = null;
+    private volatile ProtocolAction lastProtocolAction =
+            null;
+
+    private volatile long pendingActionEnvelopeSequenceId =
+            -1L;
+
+    private volatile Long lastAppliedActionSequenceId =
+            null;
+
+    private volatile long actionExpiryTick =
+            -1L;
 
     private volatile long lastSuccessfulMessageMs = 0L;
     private volatile long lastActionReceivedMs = 0L;
     private volatile long lastReconnectAttemptMs = 0L;
 
-    private long tick = 0L;
+    private volatile long tick = 0L;
+    private volatile boolean controlEnabled = false;
 
     public void toggle() {
         enabled = !enabled;
@@ -61,11 +74,7 @@ public class TcpInferenceLoop {
                 Minecraft.getInstance();
 
         if (enabled) {
-            tick = 0L;
-            lastAction = null;
-            lastAppliedActionSequenceId = null;
-            lastSuccessfulMessageMs = 0L;
-            lastActionReceivedMs = 0L;
+            resetRuntimeState();
 
             AiDebugState.connected = false;
             AiDebugState.protocolState =
@@ -74,10 +83,12 @@ public class TcpInferenceLoop {
             AiDebugState.lastProtocolAction =
                     "SAFE_IDLE";
 
+            AiDebugState.lastRoute =
+                    "CONNECTING_SAFE_IDLE";
+
             startConnect();
         } else {
-            lastAction = null;
-            lastAppliedActionSequenceId = null;
+            resetRuntimeState();
 
             AiDebugState.connected = false;
             AiDebugState.protocolState =
@@ -85,6 +96,9 @@ public class TcpInferenceLoop {
 
             AiDebugState.lastProtocolAction =
                     null;
+
+            AiDebugState.lastRoute =
+                    "OFF";
 
             AiDebugState.lastAction =
                     null;
@@ -122,8 +136,12 @@ public class TcpInferenceLoop {
     }
 
     public void onClientTick(
-            Minecraft client
+            Minecraft client,
+            boolean aiControlEnabled
     ) {
+        controlEnabled =
+                aiControlEnabled;
+
         if (!enabled) {
             return;
         }
@@ -168,8 +186,46 @@ public class TcpInferenceLoop {
         }
     }
 
-    public AiAction getLastAction() {
-        return lastAction;
+    public AiAction resolveAction(
+            Minecraft client,
+            boolean aiControlEnabled
+    ) {
+        if (!enabled) {
+            return null;
+        }
+
+        enforceActionTimeout(
+                System.currentTimeMillis()
+        );
+
+        ProtocolAction action =
+                lastProtocolAction;
+
+        ProtocolActionRouter.RoutedAction routed =
+                actionRouter.resolve(
+                        client,
+                        action,
+                        aiControlEnabled
+                );
+
+        AiDebugState.lastRoute =
+                routed.route().name();
+
+        AiDebugState.lastAction =
+                routed.action();
+
+        if (action != null) {
+            AiDebugState.lastProtocolAction =
+                    action.summary();
+        }
+
+        if (routed.applied()
+                && pendingActionEnvelopeSequenceId >= 0L) {
+            lastAppliedActionSequenceId =
+                    pendingActionEnvelopeSequenceId;
+        }
+
+        return routed.action();
     }
 
     public boolean isEnabled() {
@@ -186,7 +242,8 @@ public class TcpInferenceLoop {
                     observationFactory.create(
                             client,
                             tick,
-                            lastAppliedActionSequenceId
+                            lastAppliedActionSequenceId,
+                            controlEnabled
                     );
         } catch (RuntimeException e) {
             handleFailure(
@@ -252,12 +309,7 @@ public class TcpInferenceLoop {
             ProtocolAction action =
                     response.action();
 
-            if (!action.isSafeIdle()) {
-                throw new IOException(
-                        "Stage 4B accepts only SYSTEM/SAFE_IDLE, got "
-                                + action.actionType()
-                );
-            }
+            action.validate();
 
             long roundtripMs =
                     (System.nanoTime()
@@ -267,18 +319,25 @@ public class TcpInferenceLoop {
             long now =
                     System.currentTimeMillis();
 
-            lastAction = null;
+            lastProtocolAction =
+                    action;
+
+            pendingActionEnvelopeSequenceId =
+                    response.actionEnvelopeSequenceId();
+
+            actionExpiryTick =
+                    tick
+                            + action.effectiveValidForTicks();
+
             lastActionReceivedMs = now;
             lastSuccessfulMessageMs = now;
-            lastAppliedActionSequenceId =
-                    response.actionEnvelopeSequenceId();
 
             AiDebugState.connected = true;
             AiDebugState.protocolState =
                     "READY";
 
             AiDebugState.lastProtocolAction =
-                    "SAFE_IDLE";
+                    action.summary();
 
             AiDebugState.lastObservationSequenceId =
                     response.observationSequenceId();
@@ -292,11 +351,9 @@ public class TcpInferenceLoop {
             AiDebugState.lastInferenceMs =
                     roundtripMs;
 
-            AiDebugState.lastAction =
-                    null;
-
             System.out.println(
-                    "[MC AI Recorder] Protocol v2 SAFE_IDLE"
+                    "[MC AI Recorder] Protocol v2 "
+                            + action.summary()
                             + " observation="
                             + response.observationSequenceId()
                             + " action="
@@ -419,21 +476,35 @@ public class TcpInferenceLoop {
     private void enforceActionTimeout(
             long now
     ) {
-        if (lastActionReceivedMs <= 0L) {
+        if (lastProtocolAction == null) {
             return;
         }
 
-        if (now - lastActionReceivedMs
-                <= ACTION_TIMEOUT_MS) {
+        boolean expiredByTime =
+                lastActionReceivedMs > 0L
+                        && now - lastActionReceivedMs
+                        > ACTION_TIMEOUT_MS;
+
+        boolean expiredByTick =
+                actionExpiryTick >= 0L
+                        && tick > actionExpiryTick;
+
+        if (!expiredByTime
+                && !expiredByTick) {
             return;
         }
 
-        lastAction = null;
+        lastProtocolAction = null;
+        pendingActionEnvelopeSequenceId = -1L;
+        actionExpiryTick = -1L;
 
         AiDebugState.lastAction =
                 null;
 
         AiDebugState.lastProtocolAction =
+                "TIMEOUT_SAFE_IDLE";
+
+        AiDebugState.lastRoute =
                 "TIMEOUT_SAFE_IDLE";
     }
 
@@ -441,14 +512,19 @@ public class TcpInferenceLoop {
             String context,
             Throwable error
     ) {
-        lastAction = null;
+        lastProtocolAction = null;
+        pendingActionEnvelopeSequenceId = -1L;
         lastAppliedActionSequenceId = null;
+        actionExpiryTick = -1L;
 
         AiDebugState.connected = false;
         AiDebugState.protocolState =
                 "RECONNECTING";
 
         AiDebugState.lastProtocolAction =
+                "ERROR_SAFE_IDLE";
+
+        AiDebugState.lastRoute =
                 "ERROR_SAFE_IDLE";
 
         AiDebugState.lastAction =
@@ -462,6 +538,18 @@ public class TcpInferenceLoop {
                         + ": "
                         + error.getMessage()
         );
+    }
+
+    private void resetRuntimeState() {
+        tick = 0L;
+        lastProtocolAction = null;
+        pendingActionEnvelopeSequenceId = -1L;
+        lastAppliedActionSequenceId = null;
+        actionExpiryTick = -1L;
+        lastSuccessfulMessageMs = 0L;
+        lastActionReceivedMs = 0L;
+        lastReconnectAttemptMs = 0L;
+        controlEnabled = false;
     }
 
     private void closeInBackground() {

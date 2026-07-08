@@ -6,9 +6,14 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 
 public final class RuntimeObservationFactory {
-    private static final int FRAME_WIDTH = 224;
-    private static final int FRAME_HEIGHT = 224;
-    private static final int JPEG_QUALITY = 80;
+    private static final int FRAME_WIDTH =
+            224;
+
+    private static final int FRAME_HEIGHT =
+            224;
+
+    private static final int JPEG_QUALITY =
+            80;
 
     private final Gson gson =
             new Gson();
@@ -16,7 +21,8 @@ public final class RuntimeObservationFactory {
     public JsonObject create(
             Minecraft client,
             long tick,
-            Long lastAppliedActionSequenceId
+            Long lastAppliedActionSequenceId,
+            boolean controlEnabled
     ) {
         WorldStepSnapshot worldStep =
                 SnapshotFactory.createWorldStep(
@@ -61,6 +67,11 @@ public final class RuntimeObservationFactory {
         observation.addProperty(
                 "schemaVersion",
                 2
+        );
+
+        observation.addProperty(
+                "controlEnabled",
+                controlEnabled
         );
 
         if (lastAppliedActionSequenceId == null) {
