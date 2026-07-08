@@ -1,0 +1,32 @@
+﻿{
+    "manifestVersion":  1,
+    "generatedAtUtc":  "2026-07-08T02:56:32Z",
+    "status":  "training-ready",
+    "releaseId":  "MinePilot-Mod-1.0.0",
+    "modVersion":  "1.0.0",
+    "minecraftVersion":  "26.1.2",
+    "fabricLoaderVersion":  "0.19.3",
+    "fabricApiVersion":  "0.154.0+26.1.2",
+    "loomVersion":  "1.17-SNAPSHOT",
+    "javaVersion":  "25",
+    "protocolVersion":  2,
+    "schemaVersion":  2,
+    "capabilities":  [
+                         "OBSERVATION_JPEG",
+                         "ACTION_SAFE_IDLE",
+                         "ACTION_WORLD",
+                         "ACTION_GUI",
+                         "HEARTBEAT"
+                     ],
+    "git":  {
+                "commit":  "958d7dab238bc9a4cb7ef8258e452ad2504052ee",
+                "branch":  "main",
+                "dirty":  false
+            },
+    "artifact":  {
+                     "path":  "G:\\MinePilot\\MinePilot\\mc_ai_recorder\\build\\libs\\mc_ai_recorder-1.0.0.jar",
+                     "fileName":  "mc_ai_recorder-1.0.0.jar",
+                     "sizeBytes":  181688,
+                     "sha256":  "37ddc4758ced403712199243ab11abaef08229fd7e1be0ec841fb01e499027a3"
+                 }
+}
