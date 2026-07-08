@@ -3,6 +3,7 @@ package pl.pixeloza.mc_ai_recorder.client.recording;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -13,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RecordingManager {
     private static final Path DATASET_ROOT =
@@ -26,6 +29,9 @@ public class RecordingManager {
                     .serializeNulls()
                     .setPrettyPrinting()
                     .create();
+
+    private final GameEventTracker gameEventTracker =
+            new GameEventTracker();
 
     private boolean recording = false;
 
@@ -43,12 +49,19 @@ public class RecordingManager {
     private String lastWorldFingerprint = null;
     private long lastWorldSnapshotTick = Long.MIN_VALUE;
 
+    private int containerRevision = 0;
+    private Screen activeContainerScreen = null;
+    private ContainerSourceSnapshot activeContainerSource = null;
+    private String lastContainerFingerprint = null;
+
     private boolean pendingInitialScreenOpen = false;
 
     private JsonlWriter actionsWriter;
     private JsonlWriter guiActionsWriter;
     private JsonlWriter inventorySnapshotsWriter;
     private JsonlWriter worldSnapshotsWriter;
+    private JsonlWriter containerSnapshotsWriter;
+    private JsonlWriter gameEventsWriter;
 
     private FrameCapture frameCapture;
 
@@ -100,11 +113,10 @@ public class RecordingManager {
     }
 
     public Integer getCurrentContainerRevision() {
-        /*
-         * Container snapshots are implemented in the next recorder stage.
-         * The field remains nullable in schema v2.
-         */
-        return null;
+        return activeContainerScreen != null
+                && containerRevision > 0
+                ? containerRevision
+                : null;
     }
 
     public void toggleRecording() {
@@ -115,6 +127,62 @@ public class RecordingManager {
             );
         } else {
             startRecording();
+        }
+    }
+
+    public void prepareGuiScreenEvent(
+            Screen screen,
+            String eventType
+    ) {
+        if (!recording
+                || !(screen instanceof AbstractContainerScreen<?>)) {
+            return;
+        }
+
+        try {
+            Minecraft client =
+                    Minecraft.getInstance();
+
+            if ("SCREEN_OPEN".equals(eventType)) {
+                openContainer(
+                        client,
+                        screen
+                );
+            } else if ("SCREEN_CLOSE".equals(eventType)
+                    && activeContainerScreen == screen) {
+                refreshContainer(
+                        client,
+                        screen,
+                        false
+                );
+            }
+        } catch (Exception e) {
+            failRecording(
+                    "ERROR preparing GUI screen event",
+                    e
+            );
+        }
+    }
+
+    public void finishGuiScreenEvent(
+            Screen screen,
+            String eventType
+    ) {
+        if (!recording
+                || !"SCREEN_CLOSE".equals(eventType)
+                || activeContainerScreen != screen) {
+            return;
+        }
+
+        try {
+            closeActiveContainer(
+                    "SCREEN_CLOSE"
+            );
+        } catch (IOException e) {
+            failRecording(
+                    "ERROR closing container recording state",
+                    e
+            );
         }
     }
 
@@ -132,16 +200,32 @@ public class RecordingManager {
                     snapshot
             );
 
+            if (!"SCREEN_OPEN".equals(snapshot.eventType())
+                    && !"SCREEN_CLOSE".equals(snapshot.eventType())) {
+                Minecraft client =
+                        Minecraft.getInstance();
+
+                if (client.screen == activeContainerScreen
+                        && activeContainerScreen != null) {
+                    refreshContainer(
+                            client,
+                            activeContainerScreen,
+                            false
+                    );
+                }
+            }
+
             System.out.println(
                     "[MC AI Recorder] GUI action: "
                             + snapshot.actionType()
                             + " screen="
                             + snapshot.screenType()
                             + " slot="
-                            + snapshot.slot()
-                            .slotId()
+                            + snapshot.slot().slotId()
                             + " interaction="
                             + snapshot.interactionId()
+                            + " containerRevision="
+                            + snapshot.containerRevision()
             );
         } catch (IOException e) {
             failRecording(
@@ -162,6 +246,12 @@ public class RecordingManager {
         }
 
         tick++;
+
+        gameEventTracker.observeInput(
+                tick,
+                client.options.keyAttack.isDown(),
+                client.options.keyUse.isDown()
+        );
 
         String frameFileName =
                 getCurrentFrameFileName();
@@ -209,6 +299,10 @@ public class RecordingManager {
                     client
             );
 
+            updateContainerSnapshot(
+                    client
+            );
+
             if (pendingInitialScreenOpen) {
                 GuiInteractionRecorder
                         .recordCurrentScreenOpen(
@@ -227,6 +321,7 @@ public class RecordingManager {
                             tick,
                             framePath,
                             getCurrentInventoryRevision(),
+                            getCurrentContainerRevision(),
                             worldSnapshotRevision > 0
                                     ? worldSnapshotRevision
                                     : null,
@@ -237,6 +332,14 @@ public class RecordingManager {
 
             actionsWriter.write(
                     snapshot
+            );
+
+            emitPendingEvents(
+                    gameEventTracker
+                            .updatePlayerAndCombat(
+                                    client,
+                                    snapshot
+                            )
             );
 
             lastYaw = yaw;
@@ -253,6 +356,8 @@ public class RecordingManager {
                                 + inventoryRevision
                                 + ", worldSnapshotRevision: "
                                 + worldSnapshotRevision
+                                + ", containerRevision: "
+                                + getCurrentContainerRevision()
                                 + ", guiOpen: "
                                 + snapshot.gui().open()
                                 + ", screen: "
@@ -294,6 +399,20 @@ public class RecordingManager {
 
         lastInventoryFingerprint =
                 capture.fingerprint();
+
+        Map<String, Object> data =
+                new LinkedHashMap<>();
+
+        data.put(
+                "revision",
+                inventoryRevision
+        );
+
+        emitGameEvent(
+                "INVENTORY_CHANGED",
+                "INFERRED",
+                data
+        );
     }
 
     private void updateWorldSnapshot(
@@ -332,11 +451,246 @@ public class RecordingManager {
                 )
         );
 
+        if (changed) {
+            emitPendingEvents(
+                    gameEventTracker.updateWorld(
+                            capture,
+                            tick
+                    )
+            );
+        }
+
         lastWorldFingerprint =
                 capture.fingerprint();
 
         lastWorldSnapshotTick =
                 tick;
+    }
+
+    private void updateContainerSnapshot(
+            Minecraft client
+    ) throws IOException {
+        Screen currentScreen =
+                client.screen;
+
+        if (currentScreen
+                instanceof AbstractContainerScreen<?>) {
+            openContainer(
+                    client,
+                    currentScreen
+            );
+
+            refreshContainer(
+                    client,
+                    currentScreen,
+                    false
+            );
+
+            return;
+        }
+
+        if (activeContainerScreen != null) {
+            closeActiveContainer(
+                    "SCREEN_DISAPPEARED"
+            );
+        }
+    }
+
+    private void openContainer(
+            Minecraft client,
+            Screen screen
+    ) throws IOException {
+        if (!(screen instanceof AbstractContainerScreen<?>)) {
+            return;
+        }
+
+        if (activeContainerScreen == screen) {
+            return;
+        }
+
+        if (activeContainerScreen != null) {
+            closeActiveContainer(
+                    "SCREEN_REPLACED"
+            );
+        }
+
+        activeContainerScreen = screen;
+        activeContainerSource =
+                SnapshotFactory.containerSource(
+                        client,
+                        screen
+                );
+
+        lastContainerFingerprint = null;
+
+        refreshContainer(
+                client,
+                screen,
+                true
+        );
+
+        emitGameEvent(
+                "CONTAINER_OPENED",
+                "INFERRED",
+                containerEventData(
+                        screen,
+                        "SCREEN_OPEN"
+                )
+        );
+    }
+
+    private void refreshContainer(
+            Minecraft client,
+            Screen screen,
+            boolean force
+    ) throws IOException {
+        if (screen != activeContainerScreen
+                || !(screen
+                instanceof AbstractContainerScreen<?>)) {
+            return;
+        }
+
+        ContainerCapture capture =
+                SnapshotFactory.captureContainer(
+                        client,
+                        screen,
+                        activeContainerSource
+                );
+
+        if (!force
+                && lastContainerFingerprint != null
+                && lastContainerFingerprint.equals(
+                capture.fingerprint()
+        )) {
+            return;
+        }
+
+        containerRevision++;
+
+        containerSnapshotsWriter.write(
+                capture.toSnapshot(
+                        nextSequenceId(),
+                        tick,
+                        containerRevision
+                )
+        );
+
+        lastContainerFingerprint =
+                capture.fingerprint();
+    }
+
+    private void closeActiveContainer(
+            String reason
+    ) throws IOException {
+        if (activeContainerScreen == null) {
+            return;
+        }
+
+        emitGameEvent(
+                "CONTAINER_CLOSED",
+                "INFERRED",
+                containerEventData(
+                        activeContainerScreen,
+                        reason
+                )
+        );
+
+        activeContainerScreen = null;
+        activeContainerSource = null;
+        lastContainerFingerprint = null;
+    }
+
+    private Map<String, Object> containerEventData(
+            Screen screen,
+            String reason
+    ) {
+        Map<String, Object> data =
+                new LinkedHashMap<>();
+
+        data.put(
+                "screenType",
+                MenuSemantics.screenType(screen)
+        );
+
+        data.put(
+                "menuType",
+                MenuSemantics.menuType(screen)
+        );
+
+        data.put(
+                "revision",
+                containerRevision
+        );
+
+        data.put(
+                "reason",
+                reason
+        );
+
+        if (activeContainerSource != null) {
+            data.put(
+                    "sourceType",
+                    activeContainerSource.type()
+            );
+
+            if (activeContainerSource.blockId() != null) {
+                data.put(
+                        "blockId",
+                        activeContainerSource.blockId()
+                );
+            }
+
+            if (activeContainerSource.position() != null) {
+                data.put(
+                        "position",
+                        activeContainerSource.position()
+                );
+            }
+
+            if (activeContainerSource.entityId() != null) {
+                data.put(
+                        "entityId",
+                        activeContainerSource.entityId()
+                );
+            }
+        }
+
+        return data;
+    }
+
+    private void emitPendingEvents(
+            List<PendingGameEvent> events
+    ) throws IOException {
+        for (PendingGameEvent event : events) {
+            emitGameEvent(
+                    event.eventType(),
+                    event.source(),
+                    event.data()
+            );
+        }
+    }
+
+    private void emitGameEvent(
+            String eventType,
+            String source,
+            Map<String, Object> data
+    ) throws IOException {
+        if (!recording
+                || gameEventsWriter == null) {
+            return;
+        }
+
+        gameEventsWriter.write(
+                new GameEventSnapshot(
+                        "GAME_EVENT",
+                        nextSequenceId(),
+                        tick,
+                        System.currentTimeMillis(),
+                        eventType,
+                        source,
+                        Map.copyOf(data)
+                )
+        );
     }
 
     private void startRecording() {
@@ -422,6 +776,20 @@ public class RecordingManager {
                             )
                     );
 
+            containerSnapshotsWriter =
+                    new JsonlWriter(
+                            episodeDir.resolve(
+                                    "container_snapshots.jsonl"
+                            )
+                    );
+
+            gameEventsWriter =
+                    new JsonlWriter(
+                            episodeDir.resolve(
+                                    "game_events.jsonl"
+                            )
+                    );
+
             writeMetadata(
                     "RECORDING",
                     null,
@@ -440,7 +808,7 @@ public class RecordingManager {
             );
 
             System.out.println(
-                    "[MC AI Recorder] Schema v2 recording started: "
+                    "[MC AI Recorder] Schema v2 stage-2 recording started: "
                             + episodeDir
             );
 
@@ -475,6 +843,11 @@ public class RecordingManager {
         lastWorldFingerprint = null;
         lastWorldSnapshotTick = Long.MIN_VALUE;
 
+        containerRevision = 0;
+        activeContainerScreen = null;
+        activeContainerSource = null;
+        lastContainerFingerprint = null;
+
         pendingInitialScreenOpen = false;
 
         lastYaw =
@@ -487,6 +860,10 @@ public class RecordingManager {
                 client.player
                         .getInventory()
                         .getSelectedSlot();
+
+        gameEventTracker.reset(
+                client
+        );
 
         OffsetDateTime now =
                 OffsetDateTime.now();
@@ -514,6 +891,17 @@ public class RecordingManager {
         if (!recording
                 && episodeDir == null) {
             return;
+        }
+
+        if (recording
+                && activeContainerScreen != null) {
+            try {
+                closeActiveContainer(
+                        "RECORDING_STOPPED"
+                );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         recording = false;
@@ -562,29 +950,23 @@ public class RecordingManager {
     }
 
     private void closeResources() {
-        closeWriter(
-                actionsWriter
-        );
-
+        closeWriter(actionsWriter);
         actionsWriter = null;
 
-        closeWriter(
-                guiActionsWriter
-        );
-
+        closeWriter(guiActionsWriter);
         guiActionsWriter = null;
 
-        closeWriter(
-                inventorySnapshotsWriter
-        );
-
+        closeWriter(inventorySnapshotsWriter);
         inventorySnapshotsWriter = null;
 
-        closeWriter(
-                worldSnapshotsWriter
-        );
-
+        closeWriter(worldSnapshotsWriter);
         worldSnapshotsWriter = null;
+
+        closeWriter(containerSnapshotsWriter);
+        containerSnapshotsWriter = null;
+
+        closeWriter(gameEventsWriter);
+        gameEventsWriter = null;
 
         if (frameCapture != null) {
             try {
@@ -641,7 +1023,9 @@ public class RecordingManager {
                         List.of(
                                 "schema-v2",
                                 "hybrid",
-                                "survival"
+                                "survival",
+                                "container-snapshots",
+                                "game-events"
                         ),
                         ""
                 );

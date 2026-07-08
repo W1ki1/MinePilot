@@ -178,7 +178,8 @@ public final class MenuSemantics {
             return playerRole;
         }
 
-        if ("GenericContainerMenu".equals(menuType)) {
+        if (slotCount >= 36
+                && slotId < slotCount - 36) {
             return "CONTAINER";
         }
 

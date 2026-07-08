@@ -1050,6 +1050,11 @@ public final class GuiInteractionRecorder {
             return;
         }
 
+        recordingManager.prepareGuiScreenEvent(
+                screen,
+                eventType
+        );
+
         SlotInfo emptySlot =
                 SlotInfo.empty();
 
@@ -1090,6 +1095,11 @@ public final class GuiInteractionRecorder {
                         0.0,
                         0.0
                 )
+        );
+
+        recordingManager.finishGuiScreenEvent(
+                screen,
+                eventType
         );
     }
 

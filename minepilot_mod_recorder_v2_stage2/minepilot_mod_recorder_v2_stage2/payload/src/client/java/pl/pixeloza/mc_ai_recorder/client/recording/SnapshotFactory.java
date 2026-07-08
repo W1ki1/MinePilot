@@ -2,6 +2,7 @@ package pl.pixeloza.mc_ai_recorder.client.recording;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -13,6 +14,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.AbstractFurnaceMenu;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -284,12 +288,191 @@ public final class SnapshotFactory {
         );
     }
 
+    public static ContainerSourceSnapshot containerSource(
+            Minecraft client,
+            Screen screen
+    ) {
+        String menuType =
+                MenuSemantics.menuType(screen);
+
+        if ("InventoryMenu".equals(menuType)) {
+            return new ContainerSourceSnapshot(
+                    "PLAYER",
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        HitResult hitResult =
+                client.hitResult;
+
+        if (hitResult instanceof BlockHitResult blockHitResult) {
+            BlockPos position =
+                    blockHitResult.getBlockPos();
+
+            BlockState state =
+                    client.level.getBlockState(
+                            position
+                    );
+
+            return new ContainerSourceSnapshot(
+                    "BLOCK",
+                    BuiltInRegistries.BLOCK
+                            .getKey(
+                                    state.getBlock()
+                            )
+                            .toString(),
+                    new BlockPositionSnapshot(
+                            position.getX(),
+                            position.getY(),
+                            position.getZ()
+                    ),
+                    null
+            );
+        }
+
+        if (hitResult instanceof EntityHitResult entityHitResult) {
+            Entity entity =
+                    entityHitResult.getEntity();
+
+            return new ContainerSourceSnapshot(
+                    "ENTITY",
+                    null,
+                    null,
+                    "session:" + entity.getId()
+            );
+        }
+
+        return new ContainerSourceSnapshot(
+                "UNKNOWN",
+                null,
+                null,
+                null
+        );
+    }
+
+    public static ContainerCapture captureContainer(
+            Minecraft client,
+            Screen screen,
+            ContainerSourceSnapshot source
+    ) {
+        if (!(screen instanceof AbstractContainerScreen<?> containerScreen)) {
+            throw new IllegalArgumentException(
+                    "Screen is not a container screen"
+            );
+        }
+
+        AbstractContainerMenu menu =
+                containerScreen.getMenu();
+
+        List<ContainerSlotSnapshot> slots =
+                new ArrayList<>(
+                        menu.slots.size()
+                );
+
+        String screenType =
+                MenuSemantics.screenType(screen);
+
+        String menuType =
+                MenuSemantics.menuType(screen);
+
+        StringBuilder fingerprint =
+                new StringBuilder();
+
+        fingerprint.append(screenType)
+                .append('|')
+                .append(menuType)
+                .append('|')
+                .append(source.fingerprint());
+
+        for (int slotId = 0;
+             slotId < menu.slots.size();
+             slotId++) {
+
+            Slot slot =
+                    menu.slots.get(slotId);
+
+            ItemStackSnapshot item =
+                    ItemStackSnapshot.from(
+                            slot.getItem()
+                    );
+
+            String role =
+                    MenuSemantics.slotRole(
+                            screen,
+                            slotId
+                    );
+
+            slots.add(
+                    new ContainerSlotSnapshot(
+                            slotId,
+                            role,
+                            item
+                    )
+            );
+
+            fingerprint.append(';')
+                    .append(slotId)
+                    .append(':')
+                    .append(role)
+                    .append('=');
+
+            if (item == null) {
+                fingerprint.append("air");
+            } else {
+                fingerprint.append(
+                        item.fingerprint()
+                );
+            }
+        }
+
+        Map<String, Object> properties =
+                new LinkedHashMap<>();
+
+        if (menu instanceof AbstractFurnaceMenu furnaceMenu) {
+            properties.put(
+                    "cookProgress",
+                    furnaceMenu.getBurnProgress()
+            );
+
+            properties.put(
+                    "litProgress",
+                    furnaceMenu.getLitProgress()
+            );
+
+            properties.put(
+                    "lit",
+                    furnaceMenu.isLit()
+            );
+        }
+
+        for (Map.Entry<String, Object> entry :
+                properties.entrySet()) {
+            fingerprint.append(";property:")
+                    .append(entry.getKey())
+                    .append('=')
+                    .append(entry.getValue());
+        }
+
+        return new ContainerCapture(
+                screenType,
+                menuType,
+                menu.slots.size(),
+                source,
+                List.copyOf(slots),
+                Collections.unmodifiableMap(properties),
+                fingerprint.toString()
+        );
+    }
+
     public static WorldStepSnapshot createWorldStep(
             Minecraft client,
             long sequenceId,
             long tick,
             String framePath,
             Integer inventoryRevision,
+            Integer containerRevision,
             Integer worldSnapshotRevision,
             float yawDelta,
             float pitchDelta,
@@ -344,7 +527,7 @@ public final class SnapshotFactory {
                 targetState(client),
                 nearbyEntities(client),
                 inventoryRevision,
-                null,
+                containerRevision,
                 worldSnapshotRevision,
                 new GuiStateSnapshot(
                         screen != null,
