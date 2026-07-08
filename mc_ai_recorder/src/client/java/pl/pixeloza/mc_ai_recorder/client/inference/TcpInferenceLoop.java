@@ -1,79 +1,198 @@
 package pl.pixeloza.mc_ai_recorder.client.inference;
 
-import pl.pixeloza.mc_ai_recorder.client.hud.AiDebugState;
-
+import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import pl.pixeloza.mc_ai_recorder.client.hud.AiDebugState;
+import pl.pixeloza.mc_ai_recorder.client.recording.RuntimeObservationFactory;
 
 import java.io.IOException;
 
 public class TcpInferenceLoop {
-    private static final String SERVER_HOST = "192.168.0.11";
-    private static final int SERVER_PORT = 5005;
+    private static final String SERVER_HOST =
+            "192.168.0.11";
 
-    // Jedna predykcja co 4 ticki, czyli około 5 predykcji/s.
-    private static final int INFER_EVERY_TICKS = 4;
+    private static final int SERVER_PORT =
+            5005;
 
-    private final TcpFrameCapture frameCapture = new TcpFrameCapture();
+    private static final int INFER_EVERY_TICKS =
+            2;
 
-    private final InferenceClient inferenceClient =
-            new InferenceClient(SERVER_HOST, SERVER_PORT);
+    private static final long HEARTBEAT_INTERVAL_MS =
+            1_000L;
 
-    private boolean enabled = false;
-    private long tick = 0;
+    private static final long ACTION_TIMEOUT_MS =
+            750L;
 
+    private static final long RECONNECT_INTERVAL_MS =
+            1_000L;
+
+    private final TcpFrameCapture frameCapture =
+            new TcpFrameCapture();
+
+    private final RuntimeObservationFactory observationFactory =
+            new RuntimeObservationFactory();
+
+    private final ProtocolV2Client protocolClient =
+            new ProtocolV2Client(
+                    SERVER_HOST,
+                    SERVER_PORT
+            );
+
+    private volatile boolean enabled = false;
     private volatile boolean requestInFlight = false;
-    private volatile AiAction lastAction;
+
+    private volatile AiAction lastAction = null;
+    private volatile Long lastAppliedActionSequenceId = null;
+
+    private volatile long lastSuccessfulMessageMs = 0L;
+    private volatile long lastActionReceivedMs = 0L;
+    private volatile long lastReconnectAttemptMs = 0L;
+
+    private long tick = 0L;
 
     public void toggle() {
         enabled = !enabled;
 
-        AiDebugState.tcpEnabled = enabled;
+        AiDebugState.tcpEnabled =
+                enabled;
 
-        Minecraft client = Minecraft.getInstance();
+        Minecraft client =
+                Minecraft.getInstance();
 
-        if (!enabled) {
-            requestInFlight = false;
+        if (enabled) {
+            tick = 0L;
+            lastAction = null;
+            lastAppliedActionSequenceId = null;
+            lastSuccessfulMessageMs = 0L;
+            lastActionReceivedMs = 0L;
 
             AiDebugState.connected = false;
-            AiDebugState.lastAction = null;
-            AiDebugState.lastRoundtripMs = -1;
-            AiDebugState.jpegSize = 0;
+            AiDebugState.protocolState =
+                    "CONNECTING";
 
-            try {
-                inferenceClient.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            AiDebugState.lastProtocolAction =
+                    "SAFE_IDLE";
+
+            startConnect();
         } else {
-            // Zerujemy licznik po ponownym włączeniu.
-            tick = 0;
+            lastAction = null;
+            lastAppliedActionSequenceId = null;
+
+            AiDebugState.connected = false;
+            AiDebugState.protocolState =
+                    "OFF";
+
+            AiDebugState.lastProtocolAction =
+                    null;
+
+            AiDebugState.lastAction =
+                    null;
+
+            AiDebugState.lastRoundtripMs =
+                    -1L;
+
+            AiDebugState.lastInferenceMs =
+                    -1L;
+
+            AiDebugState.jpegSize =
+                    0;
+
+            AiDebugState.lastObservationSequenceId =
+                    -1L;
+
+            AiDebugState.lastActionSequenceId =
+                    -1L;
+
+            closeInBackground();
         }
 
         if (client.player != null) {
             client.player.sendSystemMessage(
                     Component.literal(
-                            "[MC AI Recorder] TCP inference: "
-                                    + (enabled ? "ON" : "OFF")
+                            "[MC AI Recorder] TCP protocol v2: "
+                                    + (
+                                    enabled
+                                            ? "ON"
+                                            : "OFF"
+                            )
                     )
             );
         }
     }
 
-    public void onClientTick(Minecraft client) {
-        if (!enabled || client.player == null) {
+    public void onClientTick(
+            Minecraft client
+    ) {
+        if (!enabled) {
             return;
         }
 
         tick++;
 
-        if (tick % INFER_EVERY_TICKS != 0) {
+        long now =
+                System.currentTimeMillis();
+
+        enforceActionTimeout(
+                now
+        );
+
+        if (requestInFlight) {
             return;
         }
 
-        // Nie wysyłamy następnej klatki, dopóki poprzednia
-        // predykcja nie wróciła z serwera.
-        if (requestInFlight) {
+        boolean canObserve =
+                client.player != null
+                        && client.level != null
+                        && client.options != null;
+
+        if (canObserve
+                && tick % INFER_EVERY_TICKS == 0) {
+            sendObservation(
+                    client
+            );
+            return;
+        }
+
+        if (protocolClient.isConnected()
+                && now - lastSuccessfulMessageMs
+                >= HEARTBEAT_INTERVAL_MS) {
+            sendHeartbeat();
+            return;
+        }
+
+        if (!protocolClient.isConnected()
+                && now - lastReconnectAttemptMs
+                >= RECONNECT_INTERVAL_MS) {
+            startConnect();
+        }
+    }
+
+    public AiAction getLastAction() {
+        return lastAction;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    private void sendObservation(
+            Minecraft client
+    ) {
+        JsonObject metadata;
+
+        try {
+            metadata =
+                    observationFactory.create(
+                            client,
+                            tick,
+                            lastAppliedActionSequenceId
+                    );
+        } catch (RuntimeException e) {
+            handleFailure(
+                    "Observation metadata error",
+                    e
+            );
             return;
         }
 
@@ -81,73 +200,281 @@ public class TcpInferenceLoop {
 
         frameCapture.captureJpegAsync(
                 client,
-
-                // Callback po poprawnym przechwyceniu JPEG.
                 jpeg -> {
-                    AiDebugState.jpegSize = jpeg.length;
+                    AiDebugState.jpegSize =
+                            jpeg.length;
 
-                    Thread inferenceThread = new Thread(() -> {
-                        long startNanos = System.nanoTime();
-
-                        try {
-                            lastAction = inferenceClient.predict(jpeg);
-
-                            long elapsedNanos = System.nanoTime() - startNanos;
-                            long roundtripMs = elapsedNanos / 1_000_000L;
-
-                            AiDebugState.lastRoundtripMs = roundtripMs;
-                            AiDebugState.lastInferenceMs = roundtripMs;
-                            AiDebugState.lastAction = lastAction;
-                            AiDebugState.connected = true;
-
-                            if (lastAction != null
-                                    && lastAction.buttons() != null
-                                    && lastAction.camera() != null) {
-
-                                System.out.println(
-                                        "[MC AI Recorder] TCP action"
-                                                + " F=" + lastAction.buttons().forward()
-                                                + " J=" + lastAction.buttons().jump()
-                                                + " ATK=" + lastAction.buttons().attack()
-                                                + " yaw=" + lastAction.camera().yawDelta()
-                                                + " pitch=" + lastAction.camera().pitchDelta()
-                                                + " RTT=" + roundtripMs + "ms"
-                                );
-                            }
-                        } catch (IOException | RuntimeException e) {
-                            AiDebugState.connected = false;
-
-                            System.out.println(
-                                    "[MC AI Recorder] TCP inference error: "
-                                            + e.getMessage()
+                    Thread worker =
+                            new Thread(
+                                    () -> exchangeObservation(
+                                            metadata,
+                                            jpeg
+                                    ),
+                                    "MinePilot-ProtocolV2-Observation"
                             );
 
-                            e.printStackTrace();
-                        } finally {
-                            requestInFlight = false;
-                        }
-                    }, "MC-AI-TCP-Inference");
-
-                    inferenceThread.setDaemon(true);
-                    inferenceThread.start();
-                },
-
-                // Callback, gdy przechwycenie obrazu się nie uda.
-                error -> {
-                    AiDebugState.connected = false;
-                    requestInFlight = false;
-
-                    System.out.println(
-                            "[MC AI Recorder] Frame capture error: "
-                                    + error.getMessage()
+                    worker.setDaemon(
+                            true
                     );
 
-                    error.printStackTrace();
+                    worker.start();
+                },
+                error -> {
+                    requestInFlight = false;
+
+                    handleFailure(
+                            "Frame capture error",
+                            error
+                    );
                 }
         );
     }
 
-    public AiAction getLastAction() {
-        return lastAction;
+    private void exchangeObservation(
+            JsonObject metadata,
+            byte[] jpeg
+    ) {
+        long startNanos =
+                System.nanoTime();
+
+        try {
+            ProtocolV2Client.ActionResponse response =
+                    protocolClient.exchangeObservation(
+                            metadata,
+                            jpeg
+                    );
+
+            if (!enabled) {
+                protocolClient.close();
+                return;
+            }
+
+            ProtocolAction action =
+                    response.action();
+
+            if (!action.isSafeIdle()) {
+                throw new IOException(
+                        "Stage 4B accepts only SYSTEM/SAFE_IDLE, got "
+                                + action.actionType()
+                );
+            }
+
+            long roundtripMs =
+                    (System.nanoTime()
+                            - startNanos)
+                            / 1_000_000L;
+
+            long now =
+                    System.currentTimeMillis();
+
+            lastAction = null;
+            lastActionReceivedMs = now;
+            lastSuccessfulMessageMs = now;
+            lastAppliedActionSequenceId =
+                    response.actionEnvelopeSequenceId();
+
+            AiDebugState.connected = true;
+            AiDebugState.protocolState =
+                    "READY";
+
+            AiDebugState.lastProtocolAction =
+                    "SAFE_IDLE";
+
+            AiDebugState.lastObservationSequenceId =
+                    response.observationSequenceId();
+
+            AiDebugState.lastActionSequenceId =
+                    response.actionEnvelopeSequenceId();
+
+            AiDebugState.lastRoundtripMs =
+                    roundtripMs;
+
+            AiDebugState.lastInferenceMs =
+                    roundtripMs;
+
+            AiDebugState.lastAction =
+                    null;
+
+            System.out.println(
+                    "[MC AI Recorder] Protocol v2 SAFE_IDLE"
+                            + " observation="
+                            + response.observationSequenceId()
+                            + " action="
+                            + response.actionEnvelopeSequenceId()
+                            + " jpeg="
+                            + jpeg.length
+                            + "B RTT="
+                            + roundtripMs
+                            + "ms"
+            );
+        } catch (IOException | RuntimeException e) {
+            handleFailure(
+                    "Protocol v2 observation error",
+                    e
+            );
+        } finally {
+            requestInFlight = false;
+        }
+    }
+
+    private void sendHeartbeat() {
+        requestInFlight = true;
+
+        Thread worker =
+                new Thread(
+                        () -> {
+                            try {
+                                protocolClient.heartbeat();
+
+                                if (!enabled) {
+                                    protocolClient.close();
+                                    return;
+                                }
+
+                                lastSuccessfulMessageMs =
+                                        System.currentTimeMillis();
+
+                                AiDebugState.connected =
+                                        true;
+
+                                AiDebugState.protocolState =
+                                        "READY";
+                            } catch (IOException | RuntimeException e) {
+                                handleFailure(
+                                        "Protocol v2 heartbeat error",
+                                        e
+                                );
+                            } finally {
+                                requestInFlight = false;
+                            }
+                        },
+                        "MinePilot-ProtocolV2-Heartbeat"
+                );
+
+        worker.setDaemon(
+                true
+        );
+
+        worker.start();
+    }
+
+    private void startConnect() {
+        if (!enabled
+                || requestInFlight) {
+            return;
+        }
+
+        requestInFlight = true;
+        lastReconnectAttemptMs =
+                System.currentTimeMillis();
+
+        AiDebugState.protocolState =
+                "CONNECTING";
+
+        Thread worker =
+                new Thread(
+                        () -> {
+                            try {
+                                protocolClient.connect();
+
+                                if (!enabled) {
+                                    protocolClient.close();
+                                    return;
+                                }
+
+                                lastSuccessfulMessageMs =
+                                        System.currentTimeMillis();
+
+                                AiDebugState.connected =
+                                        true;
+
+                                AiDebugState.protocolState =
+                                        "READY";
+
+                                System.out.println(
+                                        "[MC AI Recorder] Protocol v2 connected to "
+                                                + SERVER_HOST
+                                                + ':'
+                                                + SERVER_PORT
+                                );
+                            } catch (IOException | RuntimeException e) {
+                                handleFailure(
+                                        "Protocol v2 connection error",
+                                        e
+                                );
+                            } finally {
+                                requestInFlight = false;
+                            }
+                        },
+                        "MinePilot-ProtocolV2-Connect"
+                );
+
+        worker.setDaemon(
+                true
+        );
+
+        worker.start();
+    }
+
+    private void enforceActionTimeout(
+            long now
+    ) {
+        if (lastActionReceivedMs <= 0L) {
+            return;
+        }
+
+        if (now - lastActionReceivedMs
+                <= ACTION_TIMEOUT_MS) {
+            return;
+        }
+
+        lastAction = null;
+
+        AiDebugState.lastAction =
+                null;
+
+        AiDebugState.lastProtocolAction =
+                "TIMEOUT_SAFE_IDLE";
+    }
+
+    private void handleFailure(
+            String context,
+            Throwable error
+    ) {
+        lastAction = null;
+        lastAppliedActionSequenceId = null;
+
+        AiDebugState.connected = false;
+        AiDebugState.protocolState =
+                "RECONNECTING";
+
+        AiDebugState.lastProtocolAction =
+                "ERROR_SAFE_IDLE";
+
+        AiDebugState.lastAction =
+                null;
+
+        protocolClient.closeSilently();
+
+        System.out.println(
+                "[MC AI Recorder] "
+                        + context
+                        + ": "
+                        + error.getMessage()
+        );
+    }
+
+    private void closeInBackground() {
+        Thread worker =
+                new Thread(
+                        protocolClient::close,
+                        "MinePilot-ProtocolV2-Close"
+                );
+
+        worker.setDaemon(
+                true
+        );
+
+        worker.start();
     }
 }

@@ -1,5 +1,6 @@
 package pl.pixeloza.mc_ai_recorder.client;
 
+import pl.pixeloza.mc_ai_recorder.client.recording.GuiInteractionRecorder;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -13,7 +14,6 @@ import pl.pixeloza.mc_ai_recorder.client.inference.AiAction;
 import pl.pixeloza.mc_ai_recorder.client.inference.TcpInferenceLoop;
 import pl.pixeloza.mc_ai_recorder.client.legacy.ActionReader;
 import pl.pixeloza.mc_ai_recorder.client.legacy.LiveFrameExporter;
-import pl.pixeloza.mc_ai_recorder.client.recording.GuiInteractionRecorder;
 import pl.pixeloza.mc_ai_recorder.client.recording.RecordingManager;
 
 public class McAiRecorderClient
@@ -144,17 +144,18 @@ public class McAiRecorderClient
                             client
                     );
 
-                    AiAction selectedAction;
+                    AiAction tcpAction =
+                            TCP_INFERENCE_LOOP
+                                    .getLastAction();
 
-                    if (TCP_INFERENCE_LOOP.isEnabled()) {
-                        selectedAction =
-                                TCP_INFERENCE_LOOP
-                                        .getLastAction();
-                    } else {
-                        selectedAction =
-                                ACTION_READER
-                                        .getLastAction();
-                    }
+                    AiAction fileAction =
+                            ACTION_READER
+                                    .getLastAction();
+
+                    AiAction selectedAction =
+                            tcpAction != null
+                                    ? tcpAction
+                                    : fileAction;
 
                     AI_CONTROLLER.onClientTick(
                             client,

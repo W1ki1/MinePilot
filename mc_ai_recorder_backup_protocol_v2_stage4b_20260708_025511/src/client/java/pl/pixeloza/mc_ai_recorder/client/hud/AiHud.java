@@ -78,14 +78,14 @@ public final class AiHud {
         graphics.fill(
                 x - 4,
                 y - 4,
-                x + 290,
-                y + 152,
+                x + 250,
+                y + 118,
                 0x90000000
         );
 
         graphics.text(
                 client.font,
-                "MinePilot AI",
+                "OpenCraft AI",
                 x,
                 y,
                 cyan,
@@ -96,7 +96,7 @@ public final class AiHud {
 
         graphics.text(
                 client.font,
-                "TCP v2: "
+                "TCP: "
                         + (
                         AiDebugState.tcpEnabled
                                 ? "ON"
@@ -107,20 +107,6 @@ public final class AiHud {
                 AiDebugState.tcpEnabled
                         ? green
                         : red,
-                true
-        );
-
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "Protocol: "
-                        + AiDebugState.protocolState,
-                x,
-                y,
-                AiDebugState.connected
-                        ? green
-                        : yellow,
                 true
         );
 
@@ -161,7 +147,7 @@ public final class AiHud {
         String rttText =
                 AiDebugState.lastRoundtripMs >= 0
                         ? AiDebugState.lastRoundtripMs
-                        + " ms"
+                          + " ms"
                         : "---";
 
         graphics.text(
@@ -186,40 +172,7 @@ public final class AiHud {
                 true
         );
 
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "OBS: "
-                        + formatSequence(
-                        AiDebugState.lastObservationSequenceId
-                )
-                        + "  ACT: "
-                        + formatSequence(
-                        AiDebugState.lastActionSequenceId
-                ),
-                x,
-                y,
-                white,
-                true
-        );
-
         y += lineHeight + 2;
-
-        if (AiDebugState.tcpEnabled
-                && AiDebugState.lastProtocolAction != null) {
-            graphics.text(
-                    client.font,
-                    "Action: "
-                            + AiDebugState.lastProtocolAction,
-                    x,
-                    y,
-                    green,
-                    true
-            );
-
-            return;
-        }
 
         AiAction action =
                 AiDebugState.lastAction;
@@ -227,6 +180,7 @@ public final class AiHud {
         if (action == null
                 || action.buttons() == null
                 || action.camera() == null) {
+
             graphics.text(
                     client.font,
                     "Action: waiting...",
@@ -301,15 +255,5 @@ public final class AiHud {
                 white,
                 true
         );
-    }
-
-    private static String formatSequence(
-            long value
-    ) {
-        return value >= 0
-                ? Long.toUnsignedString(
-                value
-        )
-                : "---";
     }
 }

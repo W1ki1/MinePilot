@@ -6,23 +6,12 @@ public final class AiDebugState {
     private AiDebugState() {
     }
 
+    // HUD jest domyślnie widoczny.
     public static volatile boolean hudVisible = true;
 
     public static volatile boolean tcpEnabled = false;
     public static volatile boolean aiControlEnabled = false;
     public static volatile boolean connected = false;
-
-    public static volatile String protocolState =
-            "OFF";
-
-    public static volatile String lastProtocolAction =
-            null;
-
-    public static volatile long lastObservationSequenceId =
-            -1L;
-
-    public static volatile long lastActionSequenceId =
-            -1L;
 
     public static volatile AiAction lastAction = null;
 
