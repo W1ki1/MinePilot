@@ -274,16 +274,14 @@ public record ProtocolAction(
                     validateClickType();
                 }
 
-                case "QUICK_CRAFT_START" ->
-                        validateQuickCraftButton(0);
+                case "QUICK_CRAFT_START",
+                     "QUICK_CRAFT_END" ->
+                        validateQuickCraftButton();
 
                 case "QUICK_CRAFT_ADD_SLOT" -> {
                     validateSlot();
-                    validateQuickCraftButton(1);
+                    validateQuickCraftButton();
                 }
-
-                case "QUICK_CRAFT_END" ->
-                        validateQuickCraftButton(2);
 
                 case "BUTTON_CLICK" -> {
                     if (buttonId == null
@@ -325,33 +323,12 @@ public record ProtocolAction(
             }
         }
 
-        private void validateQuickCraftButton(
-                int expectedHeader
-        ) {
+        private void validateQuickCraftButton() {
             if (quickCraftButton == null
                     || quickCraftButton < 0
                     || quickCraftButton > 6) {
                 throw new IllegalArgumentException(
                         "quickCraftButton must be 0..6"
-                );
-            }
-
-            int actualHeader =
-                    quickCraftButton & 3;
-
-            int quickCraftType =
-                    quickCraftButton >> 2 & 3;
-
-            if (actualHeader != expectedHeader) {
-                throw new IllegalArgumentException(
-                        "quickCraftButton header does not match operation"
-                );
-            }
-
-            if (quickCraftType < 0
-                    || quickCraftType > 1) {
-                throw new IllegalArgumentException(
-                        "Only survival quick-craft types 0 and 1 are allowed"
                 );
             }
         }

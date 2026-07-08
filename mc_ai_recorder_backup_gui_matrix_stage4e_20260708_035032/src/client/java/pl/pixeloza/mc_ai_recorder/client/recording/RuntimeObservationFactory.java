@@ -105,7 +105,7 @@ public final class RuntimeObservationFactory {
                 );
 
         if (client.screen
-                instanceof AbstractContainerScreen<?> containerScreen) {
+                instanceof AbstractContainerScreen<?>) {
             ContainerSourceSnapshot source =
                     SnapshotFactory.containerSource(
                             client,
@@ -119,40 +119,11 @@ public final class RuntimeObservationFactory {
                             source
                     );
 
-            JsonObject runtimeContainer =
-                    gson.toJsonTree(
-                            containerCapture
-                    ).getAsJsonObject();
-
-            ItemStackSnapshot carried =
-                    ItemStackSnapshot.from(
-                            containerScreen
-                                    .getMenu()
-                                    .getCarried()
-                    );
-
-            runtimeContainer.add(
-                    "carried",
-                    gson.toJsonTree(
-                            carried
-                    )
-            );
-
-            String runtimeFingerprint =
-                    RuntimeContainerInspector
-                            .fingerprint(
-                                    client,
-                                    client.screen
-                            );
-
-            runtimeContainer.addProperty(
-                    "fingerprint",
-                    runtimeFingerprint
-            );
-
             observation.add(
                     "runtimeContainer",
-                    runtimeContainer
+                    gson.toJsonTree(
+                            containerCapture
+                    )
             );
 
             gui.addProperty(
@@ -162,7 +133,7 @@ public final class RuntimeObservationFactory {
 
             gui.addProperty(
                     "containerFingerprint",
-                    runtimeFingerprint
+                    containerCapture.fingerprint()
             );
         } else {
             observation.add(

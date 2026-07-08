@@ -11,104 +11,21 @@
       <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/fileHashes.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/resourceHashesCache.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/resourceHashesCache.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/outputFiles.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/outputFiles.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/McAiRecorderClient.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/control/AiController.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/hud/AiDebugState.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/hud/AiHud.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/AiAction$Buttons.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/AiAction$Camera.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/AiAction.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/InferenceClient.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction$SystemAction.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction$WorldAction.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolActionRouter$Route.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolActionRouter$RoutedAction.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolActionRouter.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2$Envelope.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2$MessageType.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2Client$ActionResponse.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2Client.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/TcpFrameCapture.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/TcpInferenceLoop.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/legacy/ActionReader.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/legacy/LiveFrameExporter.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ArmorSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/BlockPositionSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ContainerCapture.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ContainerSlotSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ContainerSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ContainerSourceSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/EnchantmentSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/EpisodeMetadata.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/FrameCapture$FrameJob.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/FrameCapture.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GameEventSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GameEventTracker$AbsoluteBlockKey.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GameEventTracker$AbsoluteWorld.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GameEventTracker$EntityHealthState.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GameEventTracker.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder$DragState.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder$PendingClick.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder$PendingDragStep.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder$PendingRelease.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder$SlotInfo.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder$StackInfo.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiSlotSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/GuiStateSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/InputSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/InventoryCapture.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/InventorySlotSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/InventorySnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ItemStackSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/JsonlWriter.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/MenuSemantics.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ModifiersSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/NearbyEntitySnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/PendingGameEvent.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/PlayerStateSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/PointerSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RecordingManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RecordingSchema.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RegistrySnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RegistrySnapshotExporter.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeObservationFactory.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/ScreenGeometrySnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/SnapshotFactory.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/StatusEffectSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/TargetSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/Vec3Snapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldActionSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldBlockSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldCapture.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldSnapshotBounds.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldStateSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/WorldStepSnapshot.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/libs/mc_ai_recorder-0.8.0-sources.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/libs/mc_ai_recorder-0.8.0.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction$GuiAction.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction$GuiAction.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2Client.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2Client.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeContainerInspector.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeContainerInspector.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeObservationFactory.class" beforeDir="false" afterPath="$PROJECT_DIR$/build/classes/java/client/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeObservationFactory.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/libs/mc_ai_recorder-0.9.0-sources.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/libs/mc_ai_recorder-0.9.0.jar" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/build/resources/main/fabric.mod.json" beforeDir="false" afterPath="$PROJECT_DIR$/build/resources/main/fabric.mod.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/tmp/compileClientJava/previous-compilation-data.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/tmp/jar/MANIFEST.MF" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/tmp/sourcesJar/MANIFEST.MF" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/tmp/compileClientJava/previous-compilation-data.bin" beforeDir="false" afterPath="$PROJECT_DIR$/build/tmp/compileClientJava/previous-compilation-data.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/gradle.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/hud/AiDebugState.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/hud/AiDebugState.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/hud/AiHud.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/hud/AiHud.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolAction.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolActionRouter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolActionRouter.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2Client.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/ProtocolV2Client.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/TcpInferenceLoop.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/inference/TcpInferenceLoop.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeContainerInspector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeContainerInspector.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeObservationFactory.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/RuntimeObservationFactory.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mc_ai_recorder_backup_v2_stage2_20260708_021807/gradle.properties" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mc_ai_recorder_backup_v2_stage2_20260708_021807/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/GuiInteractionRecorder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mc_ai_recorder_backup_v2_stage2_20260708_021807/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/MenuSemantics.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mc_ai_recorder_backup_v2_stage2_20260708_021807/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/RecordingManager.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mc_ai_recorder_backup_v2_stage2_20260708_021807/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/RecordingSchema.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../mc_ai_recorder_backup_v2_stage2_20260708_021807/src/client/java/pl/pixeloza/mc_ai_recorder/client/recording/SnapshotFactory.java" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
