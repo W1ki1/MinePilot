@@ -99,6 +99,29 @@ public final class RuntimeObservationFactory {
                 )
         );
 
+        WorldCapture worldCapture =
+                SnapshotFactory.captureLocalWorld(
+                        client
+                );
+
+        JsonObject runtimeWorld =
+                gson.toJsonTree(
+                        worldCapture
+                ).getAsJsonObject();
+
+        /*
+         * The fingerprint is used internally for recording revisions.
+         * Runtime inference only needs origin, bounds and blocks.
+         */
+        runtimeWorld.remove(
+                "fingerprint"
+        );
+
+        observation.add(
+                "runtimeWorld",
+                runtimeWorld
+        );
+
         JsonObject gui =
                 observation.getAsJsonObject(
                         "gui"
