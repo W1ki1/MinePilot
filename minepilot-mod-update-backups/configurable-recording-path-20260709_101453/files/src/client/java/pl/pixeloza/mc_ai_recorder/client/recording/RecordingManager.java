@@ -19,22 +19,10 @@ import java.util.List;
 import java.util.Map;
 
 public class RecordingManager {
-    private final Path datasetRoot;
-
-    public RecordingManager(
-            Path datasetRoot
-    ) {
-        if (datasetRoot == null) {
-            throw new IllegalArgumentException(
-                    "datasetRoot must not be null"
+    private static final Path DATASET_ROOT =
+            Path.of(
+                    "G:/MinecraftAI/Recordings/minepilot_v2"
             );
-        }
-
-        this.datasetRoot =
-                datasetRoot
-                        .toAbsolutePath()
-                        .normalize();
-    }
 
     private final Gson gson =
             new GsonBuilder()
@@ -705,29 +693,6 @@ public class RecordingManager {
         );
     }
 
-    private void prepareDatasetRoot()
-            throws IOException {
-        Files.createDirectories(
-                datasetRoot
-        );
-
-        if (!Files.isDirectory(datasetRoot)) {
-            throw new IOException(
-                    "Recording output is not a directory: "
-                            + datasetRoot
-            );
-        }
-
-        Path probe =
-                Files.createTempFile(
-                        datasetRoot,
-                        ".minepilot-write-test-",
-                        ".tmp"
-                );
-
-        Files.deleteIfExists(probe);
-    }
-
     private void startRecording() {
         Minecraft client =
                 Minecraft.getInstance();
@@ -746,15 +711,17 @@ public class RecordingManager {
                     client
             );
 
-            prepareDatasetRoot();
+            Files.createDirectories(
+                    DATASET_ROOT
+            );
 
             registryHash =
                     RegistrySnapshotExporter.export(
-                            datasetRoot
+                            DATASET_ROOT
                     );
 
             Path episodesRoot =
-                    datasetRoot.resolve(
+                    DATASET_ROOT.resolve(
                             "episodes"
                     );
 
@@ -838,8 +805,6 @@ public class RecordingManager {
             sendMessage(
                     "Recording started: "
                             + episodeName
-                            + " @ "
-                            + episodeDir
             );
 
             System.out.println(

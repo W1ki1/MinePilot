@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
-import pl.pixeloza.mc_ai_recorder.client.config.RuntimeConfig;
 import pl.pixeloza.mc_ai_recorder.client.control.AiController;
 import pl.pixeloza.mc_ai_recorder.client.hud.AiHud;
 import pl.pixeloza.mc_ai_recorder.client.inference.AiAction;
@@ -20,13 +19,8 @@ import pl.pixeloza.mc_ai_recorder.client.recording.RecordingManager;
 public class McAiRecorderClient
         implements ClientModInitializer {
 
-    private static final RuntimeConfig RUNTIME_CONFIG =
-            RuntimeConfig.load();
-
     private static final RecordingManager RECORDING_MANAGER =
-            new RecordingManager(
-                    RUNTIME_CONFIG.recordingOutputDirectory()
-            );
+            new RecordingManager();
 
     private static final LiveFrameExporter LIVE_FRAME_EXPORTER =
             new LiveFrameExporter();
@@ -38,9 +32,7 @@ public class McAiRecorderClient
             new AiController();
 
     private static final TcpInferenceLoop TCP_INFERENCE_LOOP =
-            new TcpInferenceLoop(
-                    RUNTIME_CONFIG
-            );
+            new TcpInferenceLoop();
 
     private KeyMapping toggleHudKey;
     private KeyMapping toggleRecordingKey;

@@ -8,7 +8,6 @@ import pl.pixeloza.mc_ai_recorder.client.hud.AiDebugState;
 import pl.pixeloza.mc_ai_recorder.client.recording.RuntimeObservationFactory;
 
 import java.io.IOException;
-import java.util.Objects;
 
 public class TcpInferenceLoop {
     private final TcpFrameCapture frameCapture =
@@ -50,19 +49,8 @@ public class TcpInferenceLoop {
     private volatile boolean controlEnabled = false;
 
     public TcpInferenceLoop() {
-        this(
-                RuntimeConfig.load()
-        );
-    }
-
-    public TcpInferenceLoop(
-            RuntimeConfig runtimeConfig
-    ) {
-        this.runtimeConfig =
-                Objects.requireNonNull(
-                        runtimeConfig,
-                        "runtimeConfig"
-                );
+        runtimeConfig =
+                RuntimeConfig.load();
 
         protocolClient =
                 new ProtocolV2Client(

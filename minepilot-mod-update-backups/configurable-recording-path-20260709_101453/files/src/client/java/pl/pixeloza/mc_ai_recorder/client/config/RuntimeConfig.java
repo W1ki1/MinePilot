@@ -9,7 +9,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 
 public final class RuntimeConfig {
@@ -26,9 +25,6 @@ public final class RuntimeConfig {
 
     private int port =
             5005;
-
-    private String recordingOutputDirectory =
-            defaultRecordingOutputDirectory();
 
     private int inferEveryTicks =
             2;
@@ -120,8 +116,6 @@ public final class RuntimeConfig {
                         + path
                         + " endpoint="
                         + config.endpoint()
-                        + " recordingOutputDirectory="
-                        + config.recordingOutputDirectory()
         );
 
         return config;
@@ -140,27 +134,6 @@ public final class RuntimeConfig {
                 1,
                 65_535
         );
-
-        if (recordingOutputDirectory == null
-                || recordingOutputDirectory.trim().isEmpty()) {
-            recordingOutputDirectory =
-                    defaultRecordingOutputDirectory();
-        } else {
-            recordingOutputDirectory =
-                    recordingOutputDirectory.trim();
-        }
-
-        try {
-            Path.of(recordingOutputDirectory);
-        } catch (InvalidPathException e) {
-            System.out.println(
-                    "[MC AI Recorder] Invalid recordingOutputDirectory: "
-                            + recordingOutputDirectory
-                            + ". Using default."
-            );
-            recordingOutputDirectory =
-                    defaultRecordingOutputDirectory();
-        }
 
         inferEveryTicks = clamp(
                 inferEveryTicks,
@@ -199,20 +172,6 @@ public final class RuntimeConfig {
         );
     }
 
-    private static String defaultRecordingOutputDirectory() {
-        String osName =
-                System.getProperty(
-                        "os.name",
-                        ""
-                ).toLowerCase();
-
-        if (osName.contains("win")) {
-            return "G:/MinecraftAI/Recordings/minepilot_v2";
-        }
-
-        return "minepilot/recordings/minepilot_v2";
-    }
-
     private static int clamp(
             int value,
             int min,
@@ -241,22 +200,6 @@ public final class RuntimeConfig {
 
     public int port() {
         return port;
-    }
-
-    public Path recordingOutputDirectory() {
-        Path configured =
-                Path.of(
-                        recordingOutputDirectory
-                );
-
-        if (configured.isAbsolute()) {
-            return configured.normalize();
-        }
-
-        return FabricLoader.getInstance()
-                .getGameDir()
-                .resolve(configured)
-                .normalize();
     }
 
     public int inferEveryTicks() {

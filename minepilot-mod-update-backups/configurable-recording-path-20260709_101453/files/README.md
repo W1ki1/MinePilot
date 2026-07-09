@@ -7,7 +7,7 @@ The mod records gameplay data, streams runtime observations to the MinePilot bac
 Current release:
 
 ```text
-MinePilot Mod:     1.1.0-alpha.1
+MinePilot Mod:     1.0.0
 Minecraft:         Java 26.1.2
 Fabric Loader:     0.19.3
 Fabric API:        0.154.0+26.1.2
@@ -103,7 +103,7 @@ cd G:\MinePilot\MinePilot\mc_ai_recorder
 Final JAR:
 
 ```text
-build\libs\mc_ai_recorder-1.1.0-alpha.1.jar
+build\libs\mc_ai_recorder-1.0.0.jar
 ```
 
 Copy the JAR into the Fabric instance `mods` directory.
@@ -124,7 +124,6 @@ Default configuration:
 {
   "host": "192.168.0.11",
   "port": 5005,
-  "recordingOutputDirectory": "G:/MinecraftAI/Recordings/minepilot_v2",
   "inferEveryTicks": 2,
   "heartbeatIntervalMs": 1000,
   "actionTimeoutMs": 750,
@@ -142,7 +141,6 @@ Restart Minecraft after editing the file.
 ```text
 host                       backend IP or hostname
 port                       backend TCP port
-recordingOutputDirectory   dataset root containing episodes/ and registries/
 inferEveryTicks            observation cadence
 heartbeatIntervalMs        heartbeat frequency
 actionTimeoutMs            stale action timeout
@@ -228,8 +226,6 @@ EXECUTION_ERROR
 
 ## Dataset recording
 
-The path is configured in `.minecraft/config/minepilot-runtime.json` through `recordingOutputDirectory`. Absolute paths are used directly. Relative paths are resolved against the Minecraft game directory. On Windows the backward-compatible default remains `G:/MinecraftAI/Recordings/minepilot_v2`; on other systems the default is the writable relative path `minepilot/recordings/minepilot_v2`.
-
 Default Windows dataset path:
 
 ```text
@@ -240,15 +236,6 @@ Default Linux dataset path:
 
 ```text
 /opt/ai/datasets/minepilot_v2
-```
-
-The configured root contains:
-
-```text
-recordingOutputDirectory/
-├── episodes/
-│   └── episode_YYYYMMDD_HHMMSS/
-└── registries/
 ```
 
 Recording format:
