@@ -45,10 +45,4 @@ public final class AiDebugState {
     public static volatile long lastRoundtripMs = -1;
 
     public static volatile int jpegSize = 0;
-
-    public static volatile String navigationPhase = "---";
-    public static volatile String navigationDirection = "---";
-    public static volatile double navigationLeftScore = Double.NaN;
-    public static volatile double navigationRightScore = Double.NaN;
-    public static volatile boolean navigationTieBreak = false;
 }

@@ -79,7 +79,7 @@ public final class AiHud {
                 x - 4,
                 y - 4,
                 x + 330,
-                y + 275,
+                y + 235,
                 0x90000000
         );
 
@@ -269,62 +269,6 @@ public final class AiHud {
                 x,
                 y,
                 white,
-                true
-        );
-
-        y += lineHeight + 2;
-
-        String leftScore =
-                Double.isNaN(AiDebugState.navigationLeftScore)
-                        ? "---"
-                        : String.format(
-                                "%.2f",
-                                AiDebugState.navigationLeftScore
-                        );
-
-        String rightScore =
-                Double.isNaN(AiDebugState.navigationRightScore)
-                        ? "---"
-                        : String.format(
-                                "%.2f",
-                                AiDebugState.navigationRightScore
-                        );
-
-        graphics.text(
-                client.font,
-                "NAV phase: " + AiDebugState.navigationPhase,
-                x,
-                y,
-                cyan,
-                true
-        );
-
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "LEFT: " + leftScore
-                        + "  RIGHT: " + rightScore,
-                x,
-                y,
-                white,
-                true
-        );
-
-        y += lineHeight;
-
-        graphics.text(
-                client.font,
-                "SELECTED: "
-                        + AiDebugState.navigationDirection
-                        + (
-                        AiDebugState.navigationTieBreak
-                                ? " (tie -> right)"
-                                : ""
-                ),
-                x,
-                y,
-                yellow,
                 true
         );
 

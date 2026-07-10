@@ -176,17 +176,10 @@ public class ProtocolV2Client implements AutoCloseable {
                 );
             }
 
-            JsonObject debug =
-                    payload.has("debug")
-                            && payload.get("debug").isJsonObject()
-                            ? payload.getAsJsonObject("debug").deepCopy()
-                            : null;
-
             return new ActionResponse(
                     observationSequenceId,
                     response.sequenceId(),
-                    action,
-                    debug
+                    action
             );
         } catch (SocketTimeoutException e) {
             closeTransport();
@@ -590,8 +583,7 @@ public class ProtocolV2Client implements AutoCloseable {
     public record ActionResponse(
             long observationSequenceId,
             long actionEnvelopeSequenceId,
-            ProtocolAction action,
-            JsonObject debug
+            ProtocolAction action
     ) {
     }
 }

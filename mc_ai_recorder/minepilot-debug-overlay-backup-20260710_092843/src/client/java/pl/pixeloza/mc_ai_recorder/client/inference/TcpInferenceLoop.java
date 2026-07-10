@@ -405,10 +405,6 @@ public class TcpInferenceLoop {
             AiDebugState.lastInferenceMs =
                     roundtripMs;
 
-            updateNavigationDebug(
-                    response.debug()
-            );
-
             System.out.println(
                     "[MC AI Recorder] Protocol v2 "
                             + action.summary()
@@ -429,52 +425,6 @@ public class TcpInferenceLoop {
             );
         } finally {
             requestInFlight = false;
-        }
-    }
-
-    private void updateNavigationDebug(
-            JsonObject debug
-    ) {
-        if (debug == null) {
-            return;
-        }
-
-        if (debug.has("phase")
-                && debug.get("phase").isJsonPrimitive()) {
-            AiDebugState.navigationPhase =
-                    debug.get("phase").getAsString();
-        }
-
-        if (!debug.has("navigationDebug")
-                || !debug.get("navigationDebug").isJsonObject()) {
-            return;
-        }
-
-        JsonObject navigation =
-                debug.getAsJsonObject("navigationDebug");
-
-        if (navigation.has("selectedDirection")
-                && !navigation.get("selectedDirection").isJsonNull()) {
-            AiDebugState.navigationDirection =
-                    navigation.get("selectedDirection").getAsString();
-        }
-
-        if (navigation.has("leftScore")
-                && !navigation.get("leftScore").isJsonNull()) {
-            AiDebugState.navigationLeftScore =
-                    navigation.get("leftScore").getAsDouble();
-        }
-
-        if (navigation.has("rightScore")
-                && !navigation.get("rightScore").isJsonNull()) {
-            AiDebugState.navigationRightScore =
-                    navigation.get("rightScore").getAsDouble();
-        }
-
-        if (navigation.has("tieBreakUsed")
-                && !navigation.get("tieBreakUsed").isJsonNull()) {
-            AiDebugState.navigationTieBreak =
-                    navigation.get("tieBreakUsed").getAsBoolean();
         }
     }
 
