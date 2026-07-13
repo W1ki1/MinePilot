@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8056707f-cd9c-4816-aa2c-46956f1288f8" name="Changes" comment="" />
+    <list default="true" id="8056707f-cd9c-4816-aa2c-46956f1288f8" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/config/RuntimeConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/client/java/pl/pixeloza/mc_ai_recorder/client/config/RuntimeConfig.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
